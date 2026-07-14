@@ -1,0 +1,746 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传龙智能选址分析系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: #667eea;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .node-inputs {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .node-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .node-row input {
+            padding: 8px;
+            font-size: 13px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .results-section {
+            grid-column: 1 / -1;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .result-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .model-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .model-info h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>传龙智能选址分析系统</h1>
+            <p class="subtitle">基于多目标优化算法的设施选址决策支持平台</p>
+        </header>
+
+        <div class="main-content">
+            <!-- 输入面板 -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📊 数据输入</span>
+                </div>
+                
+                <div class="input-section">
+                    <label>选择选址模型</label>
+                    <select id="modelSelect">
+                        <option value="gravity">精确重心法 (Gravity Method)</option>
+                        <option value="median">交叉中值法 (Cross Median)</option>
+                        <option value="minisum">最小和模型 (Minisum Model)</option>
+                        <option value="minimax">最小最大模型 (Minimax Model)</option>
+                    </select>
+                </div>
+
+                <div class="input-section">
+                    <label>需求节点数据(填入需求量，费率，X，Y坐标）</label>
+                    <div class="node-inputs" id="nodeInputs">
+                        <!-- 动态生成节点输入 -->
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="addNode()">+ 添加节点</button>
+                        <button class="btn btn-secondary" onclick="removeNode()">- 删除节点</button>
+                        <button class="btn btn-secondary" onclick="loadExample()">📋 加载示例</button>
+                    </div>
+                </div>
+
+                <div class="input-section">
+                    <label>迭代参数设置</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label>最大迭代次数</label>
+                            <input type="number" id="maxIter" value="100" min="10" max="1000">
+                        </div>
+                        <div>
+                            <label>收敛阈值</label>
+                            <input type="number" id="tolerance" value="0.001" step="0.0001" min="0.0001">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="calculateLocation()" style="width: 100%;">
+                    🚀 开始计算选址
+                </button>
+
+                <div class="model-info" id="modelInfo">
+                    <h4>模型说明：精确重心法</h4>
+                    <p>通过最小化加权运输成本来确定最优设施位置。适用于连续空间选址问题，考虑各需求点的权重（需求量×费率）。</p>
+                </div>
+            </div>
+
+            <!-- 结果面板 -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📈 计算结果</span>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>正在计算最优选址方案...</p>
+                </div>
+
+                <div id="results" style="display: none;">
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <div>最优选址 X 坐标</div>
+                            <div class="result-value" id="resultX">0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <div>最优选址 Y 坐标</div>
+                            <div class="result-value" id="resultY">0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <div>总运输成本</div>
+                            <div class="result-value" id="totalCost">¥0</div>
+                        </div>
+                        <div class="result-card">
+                            <div>平均距离</div>
+                            <div class="result-value" id="avgDistance">0 km</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="locationChart"></canvas>
+                    </div>
+                </div>
+
+                <div id="noResults" style="text-align: center; padding: 40px; color: #666;">
+                    <p>📍 输入数据并点击计算按钮查看选址结果</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2026 传龙智能选址分析系统 | 支持精确重心法、交叉中值法、最小和模型等多种选址算法</p>
+        </footer>
+    </div>
+
+    <script>
+        let chart = null;
+        let nodeCount = 5;
+
+        // 初始化节点输入
+        function initNodeInputs() {
+            const container = document.getElementById('nodeInputs');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < nodeCount; i++) {
+                addNodeToDOM(i);
+            }
+        }
+
+        function addNodeToDOM(index) {
+            const container = document.getElementById('nodeInputs');
+            const row = document.createElement('div');
+            row.className = 'node-row';
+            row.id = `node-${index}`;
+            
+            row.innerHTML = `
+                <input type="number" placeholder="需求量" id="demand-${index}" value="${(Math.random() * 100 + 20).toFixed(1)}" step="0.1">
+                <input type="number" placeholder="费率" id="rate-${index}" value="${(Math.random() * 2 + 0.5).toFixed(2)}" step="0.01">
+                <input type="number" placeholder="X坐标" id="x-${index}" value="${(Math.random() * 100).toFixed(1)}">
+                <input type="number" placeholder="Y坐标" id="y-${index}" value="${(Math.random() * 100).toFixed(1)}">
+                <input type="text" placeholder="节点名称" id="name-${index}" value="节点${index + 1}">
+            `;
+            container.appendChild(row);
+        }
+
+        function addNode() {
+            if (nodeCount < 15) {
+                addNodeToDOM(nodeCount);
+                nodeCount++;
+            }
+        }
+
+        function removeNode() {
+            if (nodeCount > 3) {
+                const container = document.getElementById('nodeInputs');
+                container.removeChild(container.lastChild);
+                nodeCount--;
+            }
+        }
+
+        function loadExample() {
+            // 预设示例数据
+            const examples = [
+                { demand: 50, rate: 1.2, x: 10, y: 20 },
+                { demand: 80, rate: 0.8, x: 30, y: 40 },
+                { demand: 60, rate: 1.5, x: 50, y: 30 },
+                { demand: 90, rate: 1.0, x: 70, y: 60 },
+                { demand: 45, rate: 1.8, x: 90, y: 20 }
+            ];
+
+            for (let i = 0; i < Math.min(nodeCount, examples.length); i++) {
+                document.getElementById(`demand-${i}`).value = examples[i].demand;
+                document.getElementById(`rate-${i}`).value = examples[i].rate;
+                document.getElementById(`x-${i}`).value = examples[i].x;
+                document.getElementById(`y-${i}`).value = examples[i].y;
+            }
+        }
+
+        // 模型选择变化时更新说明
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            const info = document.getElementById('modelInfo');
+            const model = this.value;
+            
+            const descriptions = {
+                gravity: {
+                    title: '精确重心法 (Gravity Method)',
+                    desc: '通过最小化加权运输成本来确定最优设施位置。适用于连续空间选址问题，考虑各需求点的权重（需求量×费率）。'
+                },
+                median: {
+                    title: '交叉中值法 (Cross Median)',
+                    desc: '基于曼哈顿距离的最小化模型，寻找使总加权距离最小的选址点。特别适合城市网格路网环境。'
+                },
+                minisum: {
+                    title: '最小和模型 (Minisum Model)',
+                    desc: '最小化所有需求点到设施的总距离（或成本），关注整体效率最优，适合服务多个分散客户。'
+                },
+                minimax: {
+                    title: '最小最大模型 (Minimax Model)',
+                    desc: '最小化最远需求点的距离，确保最坏情况下的服务水平最优，适合应急设施选址。'
+                }
+            };
+
+            info.innerHTML = `<h4>${descriptions[model].title}</h4><p>${descriptions[model].desc}</p>`;
+        });
+
+        // 计算选址
+        function calculateLocation() {
+            const model = document.getElementById('modelSelect').value;
+            const nodes = [];
+            
+            // 收集节点数据
+            for (let i = 0; i < nodeCount; i++) {
+                const demand = parseFloat(document.getElementById(`demand-${i}`).value) || 0;
+                const rate = parseFloat(document.getElementById(`rate-${i}`).value) || 0;
+                const x = parseFloat(document.getElementById(`x-${i}`).value) || 0;
+                const y = parseFloat(document.getElementById(`y-${i}`).value) || 0;
+                const name = document.getElementById(`name-${i}`).value || `节点${i+1}`;
+                
+                if (demand > 0 && rate > 0) {
+                    nodes.push({ demand, rate, x, y, name });
+                }
+            }
+
+            if (nodes.length < 2) {
+                alert('请至少输入2个有效节点！');
+                return;
+            }
+
+            // 显示加载动画
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('noResults').style.display = 'none';
+
+            // 模拟计算延迟
+            setTimeout(() => {
+                let result;
+                switch(model) {
+                    case 'gravity':
+                        result = calculateGravityCenter(nodes);
+                        break;
+                    case 'median':
+                        result = calculateCrossMedian(nodes);
+                        break;
+                    case 'minisum':
+                        result = calculateMinisum(nodes);
+                        break;
+                    case 'minimax':
+                        result = calculateMinimax(nodes);
+                        break;
+                }
+
+                displayResults(result, nodes, model);
+                drawChart(nodes, result);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+            }, 800);
+        }
+
+        // 精确重心法
+        function calculateGravityCenter(nodes) {
+            const maxIter = parseInt(document.getElementById('maxIter').value);
+            const tolerance = parseFloat(document.getElementById('tolerance').value);
+            
+            let currentX = nodes.reduce((sum, n) => sum + n.x, 0) / nodes.length;
+            let currentY = nodes.reduce((sum, n) => sum + n.y, 0) / nodes.length;
+            
+            for (let iter = 0; iter < maxIter; iter++) {
+                let newX = 0, newY = 0, totalWeight = 0;
+                
+                for (const node of nodes) {
+                    const weight = node.demand * node.rate;
+                    const distance = Math.sqrt(
+                        Math.pow(node.x - currentX, 2) + 
+                        Math.pow(node.y - currentY, 2)
+                    ) || 0.001;
+                    
+                    const w = weight / distance;
+                    newX += node.x * w;
+                    newY += node.y * w;
+                    totalWeight += w;
+                }
+                
+                newX /= totalWeight;
+                newY /= totalWeight;
+                
+                if (Math.abs(newX - currentX) < tolerance && Math.abs(newY - currentY) < tolerance) {
+                    currentX = newX;
+                    currentY = newY;
+                    break;
+                }
+                
+                currentX = newX;
+                currentY = newY;
+            }
+            
+            return calculateMetrics(nodes, currentX, currentY);
+        }
+
+        // 交叉中值法
+        function calculateCrossMedian(nodes) {
+            const weights = nodes.map(n => n.demand * n.rate);
+            
+            // 按X排序找中位数
+            const sortedByX = nodes.map((n, i) => ({...n, weight: weights[i]})).sort((a, b) => a.x - b.x);
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+            let cumWeight = 0;
+            let medianX = 0;
+            
+            for (const node of sortedByX) {
+                cumWeight += node.weight;
+                if (cumWeight >= totalWeight / 2) {
+                    medianX = node.x;
+                    break;
+                }
+            }
+            
+            // 按Y排序找中位数
+            const sortedByY = nodes.map((n, i) => ({...n, weight: weights[i]})).sort((a, b) => a.y - b.y);
+            cumWeight = 0;
+            let medianY = 0;
+            
+            for (const node of sortedByY) {
+                cumWeight += node.weight;
+                if (cumWeight >= totalWeight / 2) {
+                    medianY = node.y;
+                    break;
+                }
+            }
+            
+            return calculateMetrics(nodes, medianX, medianY);
+        }
+
+        // 最小和模型
+        function calculateMinisum(nodes) {
+            // 简化版：使用加权平均
+            let weightedSumX = 0, weightedSumY = 0, totalWeight = 0;
+            
+            for (const node of nodes) {
+                const weight = node.demand * node.rate;
+                weightedSumX += node.x * weight;
+                weightedSumY += node.y * weight;
+                totalWeight += weight;
+            }
+            
+            const centerX = weightedSumX / totalWeight;
+            const centerY = weightedSumY / totalWeight;
+            
+            return calculateMetrics(nodes, centerX, centerY);
+        }
+
+        // 最小最大模型
+        function calculateMinimax(nodes) {
+            // 寻找最小覆盖圆
+            let bestX = 0, bestY = 0, minMaxDist = Infinity;
+            
+            // 采样候选点
+            const candidates = [];
+            for (const node of nodes) {
+                candidates.push({x: node.x, y: node.y});
+            }
+            
+            // 添加中点
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    candidates.push({
+                        x: (nodes[i].x + nodes[j].x) / 2,
+                        y: (nodes[i].y + nodes[j].y) / 2
+                    });
+                }
+            }
+            
+            for (const candidate of candidates) {
+                let maxDist = 0;
+                for (const node of nodes) {
+                    const dist = Math.sqrt(
+                        Math.pow(node.x - candidate.x, 2) + 
+                        Math.pow(node.y - candidate.y, 2)
+                    );
+                    if (dist > maxDist) maxDist = dist;
+                }
+                if (maxDist < minMaxDist) {
+                    minMaxDist = maxDist;
+                    bestX = candidate.x;
+                    bestY = candidate.y;
+                }
+            }
+            
+            return calculateMetrics(nodes, bestX, bestY);
+        }
+
+        // 计算指标
+        function calculateMetrics(nodes, centerX, centerY) {
+            let totalCost = 0;
+            let totalDistance = 0;
+            
+            for (const node of nodes) {
+                const distance = Math.sqrt(
+                    Math.pow(node.x - centerX, 2) + 
+                    Math.pow(node.y - centerY, 2)
+                );
+                totalCost += distance * node.demand * node.rate;
+                totalDistance += distance;
+            }
+            
+            return {
+                x: centerX.toFixed(2),
+                y: centerY.toFixed(2),
+                totalCost: totalCost.toFixed(2),
+                avgDistance: (totalDistance / nodes.length).toFixed(2)
+            };
+        }
+
+        // 显示结果
+        function displayResults(result, nodes, model) {
+            document.getElementById('resultX').textContent = result.x;
+            document.getElementById('resultY').textContent = result.y;
+            document.getElementById('totalCost').textContent = '¥' + Number(result.totalCost).toLocaleString();
+            document.getElementById('avgDistance').textContent = result.avgDistance + ' km';
+        }
+
+        // 绘制图表
+        function drawChart(nodes, result) {
+            const ctx = document.getElementById('locationChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            const datasets = [{
+                label: '需求节点',
+                data: nodes.map(n => ({x: n.x, y: n.y})),
+                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2,
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }, {
+                label: '最优选址点',
+                data: [{x: parseFloat(result.x), y: parseFloat(result.y)}],
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 3,
+                pointRadius: 15,
+                pointStyle: 'star'
+            }];
+            
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        const node = nodes[context.dataIndex];
+                                        return [
+                                            `${node.name}`,
+                                            `需求量: ${node.demand}`,
+                                            `费率: ${node.rate}`,
+                                            `坐标: (${node.x}, ${node.y})`
+                                        ];
+                                    } else {
+                                        return [
+                                            `最优选址点`,
+                                            `X: ${result.x}`,
+                                            `Y: ${result.y}`,
+                                            `总成本: ¥${Number(result.totalCost).toLocaleString()}`
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'X 坐标'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Y 坐标'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 初始化
+        window.onload = function() {
+            initNodeInputs();
+        };
+    </script>
+</body>
+</html>

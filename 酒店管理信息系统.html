@@ -1,0 +1,692 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>青旅智汇 · 传龙青年旅舍连锁管理系统 | 动态房态图</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, 'Inter', system-ui, sans-serif;
+        }
+        body {
+            background: #fef7e8;
+            color: #2c1a0e;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .login-overlay {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(6px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .login-card {
+            background: #fff6ed;
+            border-radius: 48px;
+            padding: 2rem;
+            width: 340px;
+            text-align: center;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.2);
+            border: 1px solid #ffb77c;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 40px;
+            border: 1px solid #ffb77c;
+            background: #fff;
+        }
+        .login-card button {
+            background: #ff6a2e;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .app-container {
+            display: none;
+            height: 100vh;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .top-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 0.8rem 1.5rem;
+            border-bottom: 1px solid #ffdec2;
+            flex-shrink: 0;
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg,#d43f1a,#ff8c42);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .store-selector select {
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: 1px solid #ffb77c;
+            background: #fff2e6;
+            font-weight: bold;
+        }
+        .alert-badge {
+            background: #ffede3;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+        }
+        .user-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 260px;
+            background: #ffffffea;
+            border-right: 1px solid #ffe0ca;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 0;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0 1rem;
+        }
+        .nav-btn {
+            background: transparent;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 32px;
+            text-align: left;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            color: #5a3a28;
+        }
+        .nav-btn i {
+            width: 24px;
+            font-size: 1.2rem;
+        }
+        .nav-btn.active {
+            background: #ff6a2e;
+            color: white;
+            box-shadow: 0 4px 10px rgba(255,106,46,0.2);
+        }
+        .nav-btn:not(.active):hover {
+            background: #fff0e4;
+        }
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: #fef7e8;
+        }
+        .card-panel {
+            background: white;
+            border-radius: 32px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #ffdec2;
+            text-align: left;
+        }
+        button {
+            background: #ff6a2e;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin: 2px;
+        }
+        button.secondary { background: #ffad7a; }
+        button.danger { background: #c23b0e; }
+        .room-tag {
+            display: inline-block;
+            background: #f0e2d4;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            margin: 2px;
+        }
+        .warning-row { background-color: #ffe0b5; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px,1fr));
+            gap: 20px;
+        }
+        /* 房态图专用样式 */
+        .room-status-grid {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        .status-grid {
+            min-width: 800px;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .status-grid th, .status-grid td {
+            border: 1px solid #ffd9bf;
+            padding: 10px 6px;
+            text-align: center;
+            min-width: 90px;
+        }
+        .status-grid th {
+            background: #fff0e4;
+            position: sticky;
+            top: 0;
+        }
+        .room-col {
+            background: #fff7f0;
+            font-weight: 600;
+            position: sticky;
+            left: 0;
+            background-color: #fffaf5;
+        }
+        .status-cell {
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .status-idle { background-color: #c8e6df; color: #1f5e47; }
+        .status-booked { background-color: #ffe0b5; color: #b1560f; }
+        .status-checkedin { background-color: #ffccaa; color: #bc4e1a; }
+        .status-clean { background-color: #f9e0c7; color: #a5581c; }
+        .status-maintain { background-color: #f0cfcf; color: #aa2e2e; }
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .date-nav button {
+            background: #ffccaa;
+            color: #5e2e16;
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 220px; }
+            .nav-btn { padding: 10px 12px; font-size: 0.9rem; }
+            .status-grid th, .status-grid td { min-width: 70px; padding: 6px 3px; }
+        }
+        @media (max-width: 600px) {
+            .main-layout { flex-direction: column; }
+            .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding: 0.5rem; border-right: none; border-bottom: 1px solid #ffe0ca; }
+            .sidebar-nav { flex-direction: row; gap: 0.3rem; }
+            .nav-btn { white-space: nowrap; }
+        }
+    </style>
+</head>
+<body>
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+        <i class="fas fa-tree" style="font-size: 48px; color:#ff6a2e;"></i>
+        <h2>青旅·智汇后台</h2>
+        <input type="text" id="loginUser" placeholder="账号" value="admin">
+        <input type="password" id="loginPwd" placeholder="密码" value="123456">
+        <button id="doLoginBtn">登录系统</button>
+        <p style="margin-top:12px; font-size:12px;">front/123456(前台) | admin/123456(管理)</p>
+    </div>
+</div>
+
+<div id="appMain" class="app-container">
+    <div class="top-bar">
+        <div class="logo"><i class="fas fa-bed"></i> HostelFlow 连锁旅舍</div>
+        <div class="store-selector">
+            <label>🏠 门店切换：</label>
+            <select id="storeSelect"></select>
+        </div>
+        <div id="alertPanel" class="alert-badge"><i class="fas fa-bell"></i> 加载中...</div>
+        <div class="user-info">
+            <span id="roleBadge"></span>
+            <button id="logoutBtn" class="secondary">退出登录</button>
+        </div>
+    </div>
+    <div class="main-layout">
+        <div class="sidebar" id="sidebarNav"></div>
+        <div class="content-area" id="pageContent"></div>
+    </div>
+</div>
+
+<script>
+    // ---------- 数据模型 ----------
+    let currentUser = null;
+    let currentStoreId = "store_1";
+    let charts = {};
+
+    const STORES = {
+        store_1: { id: "store_1", name: "西湖青旅店", address:"西湖旁" },
+        store_2: { id: "store_2", name: "灵隐山居店", address:"灵隐寺侧" }
+    };
+
+    let db = {
+        stores: STORES,
+        rooms: {},
+        orders: [],
+        members: []
+    };
+
+    // 初始化默认数据
+    function initDefaultData() {
+        const roomTemplates = [
+            { roomNo: "101", type: "山景床位房", basePrice: 120, floor: 1, facilities: ["阳台","阅读灯"], status: "空闲" },
+            { roomNo: "102", type: "女生四人间", basePrice: 110, floor: 1, facilities: ["梳妆镜","储物柜"], status: "空闲" },
+            { roomNo: "103", type: "男生六人间", basePrice: 100, floor: 1, facilities: ["长桌","游戏机"], status: "空闲" },
+            { roomNo: "201", type: "双床私密房", basePrice: 280, floor: 2, facilities: ["投影仪","浴缸"], status: "空闲" },
+            { roomNo: "202", type: "大床露台房", basePrice: 320, floor: 2, facilities: ["露台","智能马桶"], status: "空闲" }
+        ];
+        for(let storeId of Object.keys(STORES)) {
+            if(!db.rooms[storeId] || db.rooms[storeId].length === 0) {
+                db.rooms[storeId] = roomTemplates.map(r => ({ ...r, id: crypto.randomUUID ? crypto.randomUUID() : Math.random()+"", storeId }));
+            }
+        }
+        if(db.members.length === 0){
+            db.members = [
+                { phone: "13800138000", name: "张旅行", totalSpend: 4500, points: 450, level: "黑金卡" },
+                { phone: "13912345678", name: "李背包", totalSpend: 1200, points: 120, level: "银卡" }
+            ];
+        }
+        if(db.orders.length === 0){
+            const today = new Date().toISOString().slice(0,10);
+            const tomorrow = new Date(Date.now()+86400000).toISOString().slice(0,10);
+            db.orders = [
+                { id:"ord1", storeId:"store_1", roomId: db.rooms["store_1"][0].id, roomNo:"101", guestName:"王自由", guestPhone:"13800138000", checkIn: today, checkOut: tomorrow, totalPrice: 156, status:"已支付", createTime: Date.now()-3600000, payTime: Date.now()-1800000, memberLevelUsed:"普通" }
+            ];
+        }
+        syncRoomStatesFromOrders();
+        saveToLocal();
+    }
+
+    function syncRoomStatesFromOrders(){
+        for(let storeId of Object.keys(db.rooms)){
+            db.rooms[storeId].forEach(r => { if(r.status !== "维修") r.status = "空闲"; });
+        }
+        const todayStr = new Date().toISOString().slice(0,10);
+        db.orders.forEach(order => {
+            if(order.status === "已支付" && order.checkIn <= todayStr && order.checkOut > todayStr){
+                const room = findRoomById(order.storeId, order.roomId);
+                if(room) room.status = "已预订";
+            } else if(order.status === "已入住"){
+                const room = findRoomById(order.storeId, order.roomId);
+                if(room) room.status = "已入住";
+            } else if(order.status === "已完成"){
+                const room = findRoomById(order.storeId, order.roomId);
+                if(room && room.status !== "维修") room.status = "待清洁";
+            }
+        });
+    }
+
+    function findRoomById(storeId, roomId){
+        return db.rooms[storeId]?.find(r => r.id === roomId);
+    }
+
+    function saveToLocal(){
+        localStorage.setItem("hostel_db", JSON.stringify({ rooms: db.rooms, orders: db.orders, members: db.members }));
+    }
+    function loadFromLocal(){
+        const raw = localStorage.getItem("hostel_db");
+        if(raw){
+            const data = JSON.parse(raw);
+            db.rooms = data.rooms;
+            db.orders = data.orders;
+            db.members = data.members;
+        } else {
+            initDefaultData();
+        }
+    }
+
+    function calcMemberLevel(totalSpend){
+        if(totalSpend >= 6000) return "黑金卡";
+        if(totalSpend >= 3000) return "金卡";
+        if(totalSpend >= 1000) return "银卡";
+        return "普通会员";
+    }
+    function updateMemberAfterSpend(phone, spentAmount){
+        let member = db.members.find(m => m.phone === phone);
+        if(!member){
+            member = { phone, name: phone, totalSpend:0, points:0, level:"普通会员" };
+            db.members.push(member);
+        }
+        member.totalSpend += spentAmount;
+        member.points += Math.floor(spentAmount / 10);
+        member.level = calcMemberLevel(member.totalSpend);
+        saveToLocal();
+        return member;
+    }
+
+    // 动态定价引擎（略缩，保持原有逻辑）
+    function calculatePriceDetail(basePrice, checkInDateStr, checkOutDateStr, memberLevel, usePoints = 0){
+        const checkIn = new Date(checkInDateStr);
+        const checkOut = new Date(checkOutDateStr);
+        const nights = Math.max(1, Math.ceil((checkOut - checkIn) / (1000*3600*24)));
+        const month = checkIn.getMonth()+1;
+        let seasonFactor = 1.0;
+        const isPeak = (month>=5 && month<=10) && !(month===10 && checkIn.getDate()>7);
+        if(isPeak) seasonFactor = 1.3;
+        else if(month>=11 || month<=2) seasonFactor = 0.9;
+        let weekendFactor = (checkIn.getDay()===5 || checkIn.getDay()===6) ? 1.15 : 1.0;
+        let perNightBase = basePrice * seasonFactor * weekendFactor;
+        let subTotalA = perNightBase * nights;
+        const today = new Date(); today.setHours(0,0,0,0);
+        const daysAdvance = Math.ceil((checkIn - today) / (1000*3600*24));
+        let earlyBird = (daysAdvance >= 14) ? 0.9 : (daysAdvance >= 7 ? 0.95 : 1.0);
+        let subTotalB = subTotalA * earlyBird;
+        let continueDiscount = (nights >=5) ? 0.92 : (nights >=3 ? 0.95 : 1.0);
+        let subTotalC = subTotalB * continueDiscount;
+        let memberDiscount = { "黑金卡":0.85, "金卡":0.9, "银卡":0.95 }[memberLevel] || 1.0;
+        let finalTotal = subTotalC * memberDiscount;
+        finalTotal = Math.round(finalTotal * 100) / 100;
+        let pointsUsed = 0, finalPay = finalTotal;
+        if(usePoints>0){
+            let maxPointsCanUse = Math.min(usePoints, Math.floor(finalTotal * 100));
+            pointsUsed = maxPointsCanUse;
+            finalPay = Math.max(0, finalTotal - pointsUsed/100);
+            finalPay = Math.round(finalPay*100)/100;
+        }
+        return { finalTotal: finalPay, pointsUsed };
+    }
+
+    function isRoomAvailable(storeId, roomId, checkIn, checkOut, excludeOrderId=null){
+        const orders = db.orders.filter(o => o.storeId === storeId && o.roomId === roomId && o.status !== "已取消" && o.status !== "已过期");
+        for(let ord of orders){
+            if(excludeOrderId && ord.id === excludeOrderId) continue;
+            if((checkIn < ord.checkOut && checkOut > ord.checkIn)) return false;
+        }
+        return true;
+    }
+
+    function createOrder(storeId, roomId, guestName, guestPhone, checkIn, checkOut, memberLevel, usePoints=0){
+        const room = findRoomById(storeId, roomId);
+        if(!room) return {error:"房间不存在"};
+        if(!isRoomAvailable(storeId, roomId, checkIn, checkOut)) return {error:"房间已被预订"};
+        const priceDetail = calculatePriceDetail(room.basePrice, checkIn, checkOut, memberLevel, usePoints);
+        const orderId = "ORD"+Date.now()+Math.floor(Math.random()*1000);
+        const newOrder = {
+            id: orderId, storeId, roomId, roomNo: room.roomNo, guestName, guestPhone,
+            checkIn, checkOut, basePrice: room.basePrice, totalPrice: priceDetail.finalTotal,
+            status: "待支付", createTime: Date.now(), payTime: null,
+            memberLevelUsed: memberLevel, pointsUsed: priceDetail.pointsUsed || 0
+        };
+        db.orders.push(newOrder);
+        room.status = "已预订";
+        saveToLocal();
+        return { success: true, order: newOrder };
+    }
+
+    function payOrder(orderId){ const o = db.orders.find(o=>o.id===orderId); if(o && o.status==="待支付"){ o.status="已支付"; o.payTime=Date.now(); saveToLocal(); return true; } return false; }
+    function checkinOrder(orderId){ const o = db.orders.find(o=>o.id===orderId); if(o && o.status==="已支付" && o.checkIn <= new Date().toISOString().slice(0,10)){ o.status="已入住"; const room=findRoomById(o.storeId, o.roomId); if(room) room.status="已入住"; saveToLocal(); return true; } return false; }
+    function checkoutOrder(orderId){ const o = db.orders.find(o=>o.id===orderId); if(o && o.status==="已入住"){ const today=new Date().toISOString().slice(0,10); const room=findRoomById(o.storeId, o.roomId); const member=db.members.find(m=>m.phone===o.guestPhone)||{level:"普通会员"}; const newDetail=calculatePriceDetail(room.basePrice, o.checkIn, today, member.level,0); o.totalPrice=newDetail.finalTotal; o.status="已完成"; o.actualCheckOut=today; updateMemberAfterSpend(o.guestPhone, o.totalPrice); if(room) room.status="待清洁"; saveToLocal(); return true; } return false; }
+    function cancelOrder(orderId){ const o = db.orders.find(o=>o.id===orderId); if(o && (o.status==="待支付"||o.status==="已支付")){ o.status="已取消"; const room=findRoomById(o.storeId, o.roomId); if(room && room.status==="已预订") room.status="空闲"; saveToLocal(); return true; } return false; }
+    function autoCancelExpiredOrders(){ const now=Date.now(); db.orders.forEach(o=>{ if(o.status==="待支付" && now-o.createTime>15*60*1000){ o.status="已取消"; const r=findRoomById(o.storeId, o.roomId); if(r) r.status="空闲"; } if(o.status==="已支付" && new Date(o.checkIn) < new Date().toISOString().slice(0,10)){ o.status="已过期"; const r=findRoomById(o.storeId, o.roomId); if(r && r.status==="已预订") r.status="空闲"; } }); saveToLocal(); }
+    function cleanRoom(storeId, roomId){ const r=findRoomById(storeId, roomId); if(r && r.status==="待清洁"){ r.status="空闲"; saveToLocal(); return true; } return false; }
+
+    // ---------- 动态房态图核心: 获取房间在某一天的状态 ----------
+    function getRoomStatusOnDate(room, dateStr, storeId){
+        if(room.status === "维修") return "维修";
+        const targetDate = new Date(dateStr);
+        targetDate.setHours(0,0,0,0);
+        const today = new Date(); today.setHours(0,0,0,0);
+        // 查找该房间所有有效订单
+        const orders = db.orders.filter(o => o.storeId === storeId && o.roomId === room.id && o.status !== "已取消" && o.status !== "已过期");
+        for(let ord of orders){
+            const checkInDate = new Date(ord.checkIn);
+            const checkOutDate = new Date(ord.checkOut);
+            checkInDate.setHours(0,0,0,0);
+            checkOutDate.setHours(0,0,0,0);
+            if(targetDate >= checkInDate && targetDate < checkOutDate){
+                if(ord.status === "已支付") return "已预订";
+                if(ord.status === "已入住") return "已入住";
+                if(ord.status === "已完成" && targetDate < today) return "已完成(历史)"; // 历史已完成视为空闲展示，但为了房态清晰仍显示空闲色
+                return "已预订";
+            }
+        }
+        // 未来无订单: 根据当天房间实际动态状态（清洁/空闲/已入住等）仅对当天有效
+        const todayStr = new Date().toISOString().slice(0,10);
+        if(dateStr === todayStr){
+            if(room.status === "已入住") return "已入住";
+            if(room.status === "待清洁") return "待清洁";
+            if(room.status === "空闲") return "空闲";
+            if(room.status === "已预订") return "已预订";
+            return "空闲";
+        }
+        // 未来日期且没有订单覆盖，显示空闲
+        if(targetDate > today) return "空闲";
+        // 历史日期: 如果没有订单占用，显示空闲
+        return "空闲";
+    }
+
+    // 房态图渲染 (动态网格)
+    let currentDateOffset = 0; // 0表示从今天开始
+    function renderRoomStatusGrid(container){
+        const rooms = db.rooms[currentStoreId] || [];
+        if(rooms.length === 0) { container.innerHTML = "<div class='card-panel'>暂无房间数据</div>"; return; }
+        // 生成日期序列: 从今天 + offset 开始连续14天
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + currentDateOffset);
+        startDate.setHours(0,0,0,0);
+        const dateList = [];
+        for(let i=0;i<14;i++){
+            let d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            dateList.push(d.toISOString().slice(0,10));
+        }
+        let html = `<div class="card-panel"><div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;"><h3><i class="fas fa-calendar-alt"></i> 动态房态图 · ${STORES[currentStoreId].name}</h3><div class="date-nav"><button id="prevWeekBtn"><i class="fas fa-chevron-left"></i> 前14天</button><span style="margin:0 8px">${dateList[0]} ~ ${dateList[13]}</span><button id="nextWeekBtn">后14天 <i class="fas fa-chevron-right"></i></button><button id="resetTodayBtn">回到今天</button></div></div><div class="room-status-grid"><table class="status-grid"><thead><tr><th class="room-col">房间/日期</th>`;
+        for(let d of dateList){
+            html += `<th>${d.slice(5)}</th>`;
+        }
+        html += `</tr></thead><tbody>`;
+        for(let room of rooms){
+            html += `<tr><td class="room-col"><b>${room.roomNo}</b><br><small>${room.type}</small></td>`;
+            for(let date of dateList){
+                let status = getRoomStatusOnDate(room, date, currentStoreId);
+                let statusClass = "", displayText = "";
+                switch(status){
+                    case "空闲": statusClass="status-idle"; displayText="空闲"; break;
+                    case "已预订": statusClass="status-booked"; displayText="预订"; break;
+                    case "已入住": statusClass="status-checkedin"; displayText="入住"; break;
+                    case "待清洁": statusClass="status-clean"; displayText="待清洁"; break;
+                    case "维修": statusClass="status-maintain"; displayText="维修"; break;
+                    default: statusClass="status-idle"; displayText="空闲";
+                }
+                html += `<td class="status-cell ${statusClass}">${displayText}</td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div><div style="margin-top:12px; display:flex; gap:16px; justify-content:center; font-size:12px;"><span><span style="background:#c8e6df; padding:2px 8px; border-radius:20px;">空闲</span></span><span><span style="background:#ffe0b5; padding:2px 8px; border-radius:20px;">已预订</span></span><span><span style="background:#ffccaa; padding:2px 8px; border-radius:20px;">已入住</span></span><span><span style="background:#f9e0c7; padding:2px 8px; border-radius:20px;">待清洁</span></span><span><span style="background:#f0cfcf; padding:2px 8px; border-radius:20px;">维修</span></span></div></div>`;
+        container.innerHTML = html;
+        document.getElementById("prevWeekBtn")?.addEventListener("click",()=>{ currentDateOffset -=14; renderRoomStatusGrid(container); });
+        document.getElementById("nextWeekBtn")?.addEventListener("click",()=>{ currentDateOffset +=14; renderRoomStatusGrid(container); });
+        document.getElementById("resetTodayBtn")?.addEventListener("click",()=>{ currentDateOffset=0; renderRoomStatusGrid(container); });
+    }
+
+    // 页面管理与导航
+    let currentTab = "dashboard";
+
+    function renderSidebar(){
+        const isAdmin = currentUser.role === "admin";
+        const navItems = [
+            { id:"dashboard", label:"经营仪表板", icon:"fas fa-chart-line", admin:false },
+            { id:"rooms", label:"房间管理", icon:"fas fa-bed", admin:false },
+            { id:"roomstatus", label:"动态房态图", icon:"fas fa-calendar-week", admin:false },
+            { id:"orders", label:"订单中心", icon:"fas fa-receipt", admin:false },
+            { id:"newbooking", label:"新建预订", icon:"fas fa-calendar-plus", admin:false },
+            { id:"members", label:"会员体系", icon:"fas fa-id-card", admin:true }
+        ];
+        const filtered = navItems.filter(item => !item.admin || isAdmin);
+        const sidebarDiv = document.getElementById("sidebarNav");
+        sidebarDiv.innerHTML = `<div class="sidebar-nav">${filtered.map(item => `<button class="nav-btn ${currentTab === item.id ? 'active' : ''}" data-tab="${item.id}"><i class="${item.icon}"></i> <span>${item.label}</span></button>`).join('')}</div>`;
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTab = btn.dataset.tab;
+                renderSidebar();
+                renderCurrentPage();
+                updateTopAlerts();
+            });
+        });
+    }
+
+    function renderApp(){
+        if(!currentUser) return;
+        renderSidebar();
+        renderCurrentPage();
+        updateTopAlerts();
+    }
+
+    function updateTopAlerts(){
+        const today = new Date().toISOString().slice(0,10);
+        const ordersTodayArrive = db.orders.filter(o=>o.storeId===currentStoreId && o.checkIn===today && (o.status==="已支付" || o.status==="待支付"));
+        const ordersTodayDepart = db.orders.filter(o=>o.storeId===currentStoreId && o.checkOut===today && o.status==="已入住");
+        const dirtyRooms = db.rooms[currentStoreId]?.filter(r=>r.status==="待清洁").length || 0;
+        document.getElementById("alertPanel").innerHTML = `<i class="fas fa-concierge-bell"></i> 今日到店:${ordersTodayArrive.length} | 离店:${ordersTodayDepart.length} | 🧹待清洁:${dirtyRooms}`;
+    }
+
+    function renderCurrentPage(){
+        const container = document.getElementById("pageContent");
+        if(currentTab === "dashboard") renderDashboard(container);
+        else if(currentTab === "rooms") renderRooms(container);
+        else if(currentTab === "roomstatus") renderRoomStatusGrid(container);
+        else if(currentTab === "orders") renderOrders(container);
+        else if(currentTab === "newbooking") renderNewBooking(container);
+        else if(currentTab === "members") renderMembers(container);
+    }
+
+    let lineChart, pieChart, barChart, memberChart;
+    function destroyCharts(){
+        if(lineChart){ lineChart.destroy(); lineChart=null; }
+        if(pieChart){ pieChart.destroy(); pieChart=null; }
+        if(barChart){ barChart.destroy(); barChart=null; }
+        if(memberChart){ memberChart.destroy(); memberChart=null; }
+    }
+    function renderDashboard(container){
+        destroyCharts();
+        container.innerHTML = `<div class="card-panel"><h3>📊 经营仪表板 - ${STORES[currentStoreId].name}</h3><div class="grid-2"><canvas id="lineChart"></canvas><canvas id="pieChart"></canvas><canvas id="barChart"></canvas><canvas id="memberChart"></canvas></div></div>`;
+        const orders = db.orders.filter(o=>o.storeId===currentStoreId && (o.status==="已完成"||o.status==="已入住"||o.status==="已支付"));
+        const days = [...Array(7)].map((_,i)=>{let d=new Date(); d.setDate(d.getDate()-6+i); return d.toISOString().slice(0,10);});
+        const occupancy = days.map(day=>{const occ=orders.filter(o=>o.checkIn<=day && o.checkOut>day && (o.status==="已入住"||o.status==="已完成")).length; const total=db.rooms[currentStoreId].length; return total?Math.round(occ/total*100):0;});
+        const completed = db.orders.filter(o=>o.storeId===currentStoreId && o.status==="已完成");
+        const typeIncome={}; completed.forEach(o=>{ const r=findRoomById(o.storeId,o.roomId); if(r) typeIncome[r.type]=(typeIncome[r.type]||0)+o.totalPrice; });
+        const monthDays=[...Array(30)].map((_,i)=>`2025-${String(new Date().getMonth()+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+        const dailyRevenue=monthDays.map(d=>completed.filter(o=>o.checkOut===d).reduce((s,o)=>s+o.totalPrice,0));
+        const levels={"普通会员":0,"银卡":0,"金卡":0,"黑金卡":0}; db.members.forEach(m=>levels[m.level]++);
+        lineChart=new Chart(document.getElementById("lineChart"),{type:'line',data:{labels:days,datasets:[{label:'入住率 %',data:occupancy,borderColor:'#ff6a2e'}]}});
+        pieChart=new Chart(document.getElementById("pieChart"),{type:'pie',data:{labels:Object.keys(typeIncome),datasets:[{data:Object.values(typeIncome),backgroundColor:['#ff9f68','#ff7a42','#d95b2b']}]}});
+        barChart=new Chart(document.getElementById("barChart"),{type:'bar',data:{labels:monthDays.slice(0,10),datasets:[{label:'营收(元)',data:dailyRevenue.slice(0,10),backgroundColor:'#ff8c42'}]}});
+        memberChart=new Chart(document.getElementById("memberChart"),{type:'bar',data:{labels:Object.keys(levels),datasets:[{label:'会员人数',data:Object.values(levels)}]}});
+    }
+
+    function renderRooms(container){
+        const rooms = db.rooms[currentStoreId] || [];
+        const isAdmin = currentUser.role === "admin";
+        let html=`<div class="card-panel"><h3>🏠 房间管理</h3><table><thead><th>房号</th><th>类型</th><th>基础价</th><th>设施</th><th>状态</th><th>操作</th></thead><tbody>`;
+        rooms.forEach(room=>{ const warn=(room.status==="空闲" && rooms.filter(r=>r.status==="空闲").length<=1) ? 'class="warning-row"' : '';
+            html+=`<tr ${warn}><td>${room.roomNo}<td>${room.type}<td>¥${room.basePrice}<td>${room.facilities.map(f=>`<span class="room-tag">${f}</span>`).join('')}<td>${room.status}<td>`;
+            if(room.status==="待清洁") html+=`<button class="cleanBtn" data-id="${room.id}">🧹清洁</button>`;
+            if(isAdmin && room.status!=="维修" && room.status!=="待清洁") html+=`<button class="repairBtn" data-id="${room.id}">🔧维修</button>`;
+            if(isAdmin && room.status==="维修") html+=`<button class="repairCancel" data-id="${room.id}">✅恢复</button>`;
+            html+=`</tr>`;
+        });
+        html+=`</tbody></table></div>`;
+        container.innerHTML=html;
+        document.querySelectorAll('.cleanBtn').forEach(btn=>btn.addEventListener('click',()=>{cleanRoom(currentStoreId,btn.dataset.id); renderApp();}));
+        if(isAdmin){
+            document.querySelectorAll('.repairBtn').forEach(btn=>btn.addEventListener('click',()=>{const r=findRoomById(currentStoreId,btn.dataset.id); if(r) r.status="维修"; saveToLocal(); renderApp();}));
+            document.querySelectorAll('.repairCancel').forEach(btn=>btn.addEventListener('click',()=>{const r=findRoomById(currentStoreId,btn.dataset.id); if(r) r.status="空闲"; saveToLocal(); renderApp();}));
+        }
+    }
+
+    function renderOrders(container){
+        const orders = db.orders.filter(o=>o.storeId===currentStoreId);
+        container.innerHTML=`<div class="card-panel"><h3>📋 订单中心</h3><table><thead><th>订单号</th><th>客人</th><th>房间</th><th>入住-离店</th><th>金额</th><th>状态</th><th>操作</th></thead><tbody>${orders.map(o=>`<tr><td>${o.id}<td>${o.guestName}<br><small>${o.guestPhone}</small><td>${o.roomNo}<td>${o.checkIn}→${o.checkOut}<td>¥${o.totalPrice}<td>${o.status}<td>${renderOrderActions(o)}</tr>`).join('')}</tbody></table></div>`;
+        function renderOrderActions(o){
+            if(o.status==="待支付") return `<button class="payBtn" data-id="${o.id}">💳支付</button><button class="cancelBtn" data-id="${o.id}">❌取消</button>`;
+            if(o.status==="已支付" && o.checkIn<=new Date().toISOString().slice(0,10)) return `<button class="checkinBtn" data-id="${o.id}">🏨入住</button><button class="cancelBtn" data-id="${o.id}">取消</button>`;
+            if(o.status==="已入住") return `<button class="checkoutBtn" data-id="${o.id}">🧾退房</button>`;
+            return "";
+        }
+        setTimeout(()=>{
+            document.querySelectorAll('.payBtn').forEach(btn=>btn.addEventListener('click',()=>{payOrder(btn.dataset.id); renderApp();}));
+            document.querySelectorAll('.cancelBtn').forEach(btn=>btn.addEventListener('click',()=>{cancelOrder(btn.dataset.id); renderApp();}));
+            document.querySelectorAll('.checkinBtn').forEach(btn=>btn.addEventListener('click',()=>{checkinOrder(btn.dataset.id); renderApp();}));
+            document.querySelectorAll('.checkoutBtn').forEach(btn=>btn.addEventListener('click',()=>{checkoutOrder(btn.dataset.id); renderApp();}));
+        },10);
+    }
+    function renderNewBooking(container){
+        const rooms = db.rooms[currentStoreId].filter(r=>r.status==="空闲");
+        container.innerHTML=`<div class="card-panel"><h3>✍️ 新建预订</h3><form id="bookingForm"><label>姓名</label><input id="guestName" required><label>手机号</label><input id="guestPhone" required><label>房间</label><select id="roomSelect">${rooms.map(r=>`<option value="${r.id}">${r.roomNo} - ${r.type} ¥${r.basePrice}</option>`).join('')}</select><label>入住</label><input type="date" id="checkIn" required><label>离店</label><input type="date" id="checkOut" required><label>使用积分</label><input type="number" id="usePoints" value="0"><button type="submit">预订</button></form></div>`;
+        document.getElementById("bookingForm").addEventListener("submit",(e)=>{
+            e.preventDefault(); const phone=document.getElementById("guestPhone").value;
+            let member=db.members.find(m=>m.phone===phone)||{phone,name:phone,totalSpend:0,points:0,level:"普通会员"};
+            const roomId=document.getElementById("roomSelect").value, checkIn=document.getElementById("checkIn").value, checkOut=document.getElementById("checkOut").value, usePoints=parseInt(document.getElementById("usePoints").value)||0;
+            if(new Date(checkIn)>=new Date(checkOut)) return alert("离店需大于入住");
+            const result=createOrder(currentStoreId,roomId,document.getElementById("guestName").value,phone,checkIn,checkOut,member.level,usePoints);
+            if(result.error) alert(result.error); else { alert(`订单创建成功，总价¥${result.order.totalPrice}`); renderApp(); }
+        });
+    }
+    function renderMembers(container){
+        if(currentUser.role!=="admin"){ container.innerHTML="<div class='card-panel'>无权限</div>"; return; }
+        container.innerHTML=`<div class="card-panel"><h3>👥 会员管理</h3></td><thead><th>手机号</th><th>姓名</th><th>总消费</th><th>积分</th><th>等级</th></thead><tbody>${db.members.map(m=>`<tr><td>${m.phone}<td>${m.name}<td>¥${m.totalSpend}<td>${m.points}<td>${m.level}</tr>`).join('')}</tbody></table></div>`;
+    }
+
+    function login(username, password){
+        if((username==="admin" && password==="123456") || (username==="front" && password==="123456")){
+            currentUser={username,role:username==="admin"?"admin":"front"};
+            document.getElementById("loginOverlay").style.display="none";
+            document.getElementById("appMain").style.display="flex";
+            document.getElementById("roleBadge").innerHTML=`<i class="fas fa-user-shield"></i> ${currentUser.role==="admin"?"管理员":"前台员工"}`;
+            loadFromLocal(); autoCancelExpiredOrders(); currentStoreId="store_1";
+            renderStoreSelector(); renderApp();
+            return true;
+        }
+        return false;
+    }
+    function renderStoreSelector(){
+        const sel=document.getElementById("storeSelect");
+        sel.innerHTML=Object.values(STORES).map(s=>`<option value="${s.id}" ${currentStoreId===s.id?"selected":""}>${s.name}</option>`).join('');
+        sel.addEventListener("change",(e)=>{ currentStoreId=e.target.value; renderApp(); });
+    }
+    document.getElementById("doLoginBtn").onclick=()=>{ const u=document.getElementById("loginUser").value, p=document.getElementById("loginPwd").value; if(!login(u,p)) alert("账号或密码错误"); };
+    document.getElementById("logoutBtn").onclick=()=>{ currentUser=null; document.getElementById("loginOverlay").style.display="flex"; document.getElementById("appMain").style.display="none"; };
+    loadFromLocal(); autoCancelExpiredOrders();
+</script>
+</body>
+</html>

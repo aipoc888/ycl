@@ -1,0 +1,1288 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传龙智能配送路线优化系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, #00f5a0, #00d9f5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            color: #8892b0;
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 245, 160, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 245, 160, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #00f5a0, #00d9f5);
+            border-radius: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #a8b2d1;
+            font-size: 0.95rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00f5a0;
+            box-shadow: 0 0 0 3px rgba(0, 245, 160, 0.1);
+        }
+
+        .node-inputs {
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .node-inputs::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .node-inputs::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .node-inputs::-webkit-scrollbar-thumb {
+            background: rgba(0, 245, 160, 0.5);
+            border-radius: 3px;
+        }
+
+        .node-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+
+        .node-label {
+            background: rgba(0, 245, 160, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #00f5a0;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00f5a0 0%, #00d9f5 100%);
+            color: #0a192f;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 245, 160, 0.3);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .model-params {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .model-params.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .param-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 245, 160, 0.1) 0%, rgba(0, 217, 245, 0.1) 100%);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(0, 245, 160, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00f5a0, #00d9f5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-top: 10px;
+        }
+
+        .metric-label {
+            color: #8892b0;
+            font-size: 0.95rem;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            padding: 25px;
+            height: 400px;
+            position: relative;
+        }
+
+        .routes-container {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            padding: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .route-item {
+            background: rgba(0, 245, 160, 0.05);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00f5a0;
+        }
+
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .route-id {
+            font-weight: 700;
+            color: #00f5a0;
+            font-size: 1.1rem;
+        }
+
+        .route-distance {
+            background: rgba(0, 245, 160, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #00f5a0;
+        }
+
+        .route-path {
+            color: #a8b2d1;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .model-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .model-info h4 {
+            color: #00f5a0;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .model-info p {
+            color: #a8b2d1;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00f5a0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #64748b;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>传龙智能配送路线优化系统</h1>
+            <p class="subtitle">集成多种经典路径优化算法，实现配送成本最小化与服务效率最大化</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-title">⚙️ 优化参数配置</div>
+                    
+                    <div class="input-group">
+                        <label>选择优化算法</label>
+                        <select id="algorithmSelect">
+                            <option value="savings">节约里程法 (Clarke-Wright)</option>
+                            <option value="nearest-neighbor">最近邻算法 (Nearest Neighbor)</option>
+                            <option value="dijkstra">Dijkstra 最短路径</option>
+                            <option value="two-opt">2-Opt 优化算法</option>
+                            <option value="sweep">扫描算法 (Sweep Algorithm)</option>
+                            <option value="genetic">遗传算法 (Genetic Algorithm)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>车辆容量限制 (kg)</label>
+                        <input type="number" id="vehicleCapacity" value="1000" min="100" step="100">
+                    </div>
+
+                    <div class="input-group">
+                        <label>最大行驶距离 (km)</label>
+                        <input type="number" id="maxDistance" value="200" min="50" step="10">
+                    </div>
+
+                    <div class="model-params" id="genetic-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>种群大小</label>
+                                <input type="number" id="populationSize" value="50" min="10" max="200">
+                            </div>
+                            <div class="input-group">
+                                <label>进化代数</label>
+                                <input type="number" id="generations" value="100" min="10" max="500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="savings-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>节约阈值</label>
+                                <input type="number" id="savingsThreshold" value="5" min="1" max="50">
+                            </div>
+                            <div class="input-group">
+                                <label>合并策略</label>
+                                <select id="mergeStrategy">
+                                    <option value="parallel">并行合并</option>
+                                    <option value="sequential">顺序合并</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="dijkstra-params">
+                        <div class="input-group">
+                            <label>路径类型</label>
+                            <select id="pathType">
+                                <option value="shortest">最短路径</option>
+                                <option value="fastest">最快路径</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>配送节点数据</label>
+                        <div class="node-inputs" id="nodeInputs">
+                            <!-- 动态生成 -->
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary" onclick="addNode()">+ 添加节点</button>
+                            <button class="btn btn-secondary" onclick="removeNode()">- 删除节点</button>
+                        </div>
+                        <button class="btn btn-secondary" onclick="loadExampleData()" style="margin-top: 10px; width: 100%;">
+                            📋 加载示例数据
+                        </button>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="optimizeRoutes()">
+                        🚀 开始路线优化
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">ℹ️ 算法说明</div>
+                    <div class="model-info" id="algorithmDescription">
+                        <h4>节约里程法 (Clarke-Wright)</h4>
+                        <p>通过计算合并两条路线的节约里程，逐步合并路线直至无法再节约。经典实用，适合中小规模配送问题。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="content-area">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">优化前总距离</div>
+                        <div class="metric-value" id="beforeDistance">-- km</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">优化后总距离</div>
+                        <div class="metric-value" id="afterDistance">-- km</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">节约里程</div>
+                        <div class="metric-value" id="savedDistance">-- km</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">所需车辆数</div>
+                        <div class="metric-value" id="vehicleCount">-- 辆</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🗺️ 路线可视化地图</div>
+                    <div class="map-container" id="map"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 优化效果对比</div>
+                    <div class="chart-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📋 优化路线方案</div>
+                    <div class="routes-container" id="routesContainer">
+                        <p style="color: #64748b; text-align: center; padding: 40px;">
+                            请点击"开始路线优化"查看优化方案
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text">正在计算最优配送路线...</div>
+        </div>
+
+        <footer>
+            <p>© 2026 传龙智能配送路线优化系统 | 集成节约里程法、Dijkstra、遗传算法等多种优化算法</p>
+        </footer>
+    </div>
+
+    <script>
+        let map = null;
+        let comparisonChart = null;
+        let nodeCount = 8;
+        let markers = [];
+        let polylines = [];
+        let nodes = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            initNodeInputs();
+            setupAlgorithmChangeListener();
+            loadExampleData();
+        });
+
+        // 初始化地图
+        function initMap() {
+            map = L.map('map').setView([39.9042, 116.4074], 11);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // 设置算法切换监听
+        function setupAlgorithmChangeListener() {
+            const algorithmSelect = document.getElementById('algorithmSelect');
+            algorithmSelect.addEventListener('change', updateAlgorithmParams);
+            updateAlgorithmParams();
+        }
+
+        // 更新算法参数显示
+        function updateAlgorithmParams() {
+            const algorithm = document.getElementById('algorithmSelect').value;
+            
+            // 隐藏所有参数面板
+            document.querySelectorAll('.model-params').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // 显示当前算法的参数面板
+            const paramMap = {
+                'genetic': 'genetic-params',
+                'savings': 'savings-params',
+                'dijkstra': 'dijkstra-params'
+            };
+            
+            if (paramMap[algorithm]) {
+                document.getElementById(paramMap[algorithm]).classList.add('active');
+            }
+            
+            // 更新算法说明
+            updateAlgorithmDescription(algorithm);
+        }
+
+        // 更新算法说明
+        function updateAlgorithmDescription(algorithm) {
+            const descriptions = {
+                'savings': {
+                    title: '节约里程法 (Clarke-Wright)',
+                    desc: '通过计算合并两条路线的节约里程，逐步合并路线直至无法再节约。经典实用，适合中小规模配送问题。'
+                },
+                'nearest-neighbor': {
+                    title: '最近邻算法 (Nearest Neighbor)',
+                    desc: '从仓库出发，每次选择最近的未访问节点作为下一个目的地。简单快速，但可能不是全局最优。'
+                },
+                'dijkstra': {
+                    title: 'Dijkstra 最短路径',
+                    desc: '经典的最短路径算法，保证找到两点之间的最短路径。适合单车辆、单路径优化场景。'
+                },
+                'two-opt': {
+                    title: '2-Opt 优化算法',
+                    desc: '通过交换路径中的两个边来改进现有路线。能有效消除路径交叉，提升路线质量。'
+                },
+                'sweep': {
+                    title: '扫描算法 (Sweep Algorithm)',
+                    desc: '按极角顺序扫描节点，将节点分组形成路线。适合节点分布较均匀的区域。'
+                },
+                'genetic': {
+                    title: '遗传算法 (Genetic Algorithm)',
+                    desc: '模拟自然进化过程的启发式算法，通过选择、交叉、变异寻找近似最优解。适合大规模复杂问题。'
+                }
+            };
+            
+            const info = descriptions[algorithm];
+            document.getElementById('algorithmDescription').innerHTML = `
+                <h4>${info.title}</h4>
+                <p>${info.desc}</p>
+            `;
+        }
+
+        // 初始化节点输入
+        function initNodeInputs() {
+            const container = document.getElementById('nodeInputs');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < nodeCount; i++) {
+                addNodeInput(i);
+            }
+        }
+
+        // 添加节点输入
+        function addNodeInput(index) {
+            const container = document.getElementById('nodeInputs');
+            const row = document.createElement('div');
+            row.className = 'node-row';
+            row.id = `node-${index}`;
+            
+            // 北京周边示例坐标
+            const baseLat = 39.9042;
+            const baseLng = 116.4074;
+            const lat = (baseLat + (Math.random() - 0.5) * 0.2).toFixed(4);
+            const lng = (baseLng + (Math.random() - 0.5) * 0.3).toFixed(4);
+            const demand = Math.floor(Math.random() * 200 + 50);
+            
+            row.innerHTML = `
+                <div class="node-label">P${index}</div>
+                <input type="number" step="0.0001" placeholder="纬度" id="lat-${index}" value="${lat}">
+                <input type="number" step="0.0001" placeholder="经度" id="lng-${index}" value="${lng}">
+                <input type="number" placeholder="需求量" id="demand-${index}" value="${demand}">
+            `;
+            container.appendChild(row);
+        }
+
+        // 添加节点
+        function addNode() {
+            if (nodeCount < 20) {
+                addNodeInput(nodeCount);
+                nodeCount++;
+            }
+        }
+
+        // 删除节点
+        function removeNode() {
+            if (nodeCount > 3) {
+                const container = document.getElementById('nodeInputs');
+                container.removeChild(container.lastChild);
+                nodeCount--;
+            }
+        }
+
+        // 加载示例数据
+        function loadExampleData() {
+            const beijingAreas = [
+                { name: "仓库", lat: 39.9042, lng: 116.4074, demand: 0 },
+                { name: "朝阳", lat: 39.9219, lng: 116.4436, demand: 150 },
+                { name: "海淀", lat: 39.9593, lng: 116.2984, demand: 200 },
+                { name: "丰台", lat: 39.8584, lng: 116.2872, demand: 180 },
+                { name: "石景山", lat: 39.9067, lng: 116.1954, demand: 120 },
+                { name: "通州", lat: 39.9025, lng: 116.6586, demand: 160 },
+                { name: "昌平", lat: 40.2181, lng: 116.2359, demand: 140 },
+                { name: "大兴", lat: 39.7289, lng: 116.3388, demand: 170 }
+            ];
+            
+            nodeCount = beijingAreas.length;
+            initNodeInputs();
+            
+            for (let i = 0; i < nodeCount; i++) {
+                document.getElementById(`lat-${i}`).value = beijingAreas[i].lat;
+                document.getElementById(`lng-${i}`).value = beijingAreas[i].lng;
+                document.getElementById(`demand-${i}`).value = beijingAreas[i].demand;
+            }
+        }
+
+        // 获取节点数据
+        function getNodes() {
+            const nodes = [];
+            for (let i = 0; i < nodeCount; i++) {
+                const lat = parseFloat(document.getElementById(`lat-${i}`).value);
+                const lng = parseFloat(document.getElementById(`lng-${i}`).value);
+                const demand = parseFloat(document.getElementById(`demand-${i}`).value) || 0;
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    nodes.push({
+                        id: i,
+                        name: i === 0 ? '仓库' : `节点${i}`,
+                        lat: lat,
+                        lng: lng,
+                        demand: demand
+                    });
+                }
+            }
+            return nodes;
+        }
+
+        // 计算两点间距离（Haversine公式）
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // 地球半径(km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // 清除地图上的标记和路线
+        function clearMap() {
+            markers.forEach(marker => map.removeLayer(marker));
+            polylines.forEach(polyline => map.removeLayer(polyline));
+            markers = [];
+            polylines = [];
+        }
+
+        // 在地图上显示节点
+        function showNodesOnMap(nodes) {
+            clearMap();
+            
+            nodes.forEach((node, index) => {
+                const color = index === 0 ? '#ff4757' : '#00f5a0';
+                const radius = index === 0 ? 12 : 8;
+                
+                const marker = L.circleMarker([node.lat, node.lng], {
+                    radius: radius,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 2,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div style="font-weight: bold;">${node.name}</div>
+                    <div>纬度: ${node.lat.toFixed(4)}</div>
+                    <div>经度: ${node.lng.toFixed(4)}</div>
+                    <div>需求量: ${node.demand} kg</div>
+                `);
+                
+                markers.push(marker);
+            });
+            
+            // 调整视图以包含所有节点
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        // 显示路线
+        function showRoutesOnMap(routes) {
+            routes.forEach((route, index) => {
+                const colors = ['#00f5a0', '#00d9f5', '#ffa502', '#ff4757', '#a55eea'];
+                const color = colors[index % colors.length];
+                
+                const latlngs = route.nodes.map(nodeId => {
+                    const node = nodes.find(n => n.id === nodeId);
+                    return [node.lat, node.lng];
+                });
+                
+                const polyline = L.polyline(latlngs, {
+                    color: color,
+                    weight: 4,
+                    opacity: 0.8
+                }).addTo(map);
+                
+                polyline.bindPopup(`
+                    <div style="font-weight: bold;">路线 ${index + 1}</div>
+                    <div>距离: ${route.distance.toFixed(2)} km</div>
+                    <div>节点数: ${route.nodes.length}</div>
+                `);
+                
+                polylines.push(polyline);
+            });
+        }
+
+        // 运行优化
+        function optimizeRoutes() {
+            nodes = getNodes();
+            if (nodes.length < 3) {
+                alert('请至少输入3个节点（包括仓库）！');
+                return;
+            }
+
+            showLoading(true);
+            showNodesOnMap(nodes);
+
+            setTimeout(() => {
+                const algorithm = document.getElementById('algorithmSelect').value;
+                let result;
+                
+                switch(algorithm) {
+                    case 'savings':
+                        result = savingsAlgorithm(nodes);
+                        break;
+                    case 'nearest-neighbor':
+                        result = nearestNeighborAlgorithm(nodes);
+                        break;
+                    case 'dijkstra':
+                        result = dijkstraAlgorithm(nodes);
+                        break;
+                    case 'two-opt':
+                        result = twoOptAlgorithm(nodes);
+                        break;
+                    case 'sweep':
+                        result = sweepAlgorithm(nodes);
+                        break;
+                    case 'genetic':
+                        result = geneticAlgorithm(nodes);
+                        break;
+                }
+
+                displayResults(result);
+                showRoutesOnMap(result.routes);
+                drawComparisonChart(result);
+                showLoading(false);
+            }, 1000);
+        }
+
+        // 节约里程法
+        function savingsAlgorithm(nodes) {
+            const warehouse = nodes[0];
+            const customers = nodes.slice(1);
+            const vehicleCapacity = parseInt(document.getElementById('vehicleCapacity').value);
+            
+            // 计算节约矩阵
+            const savings = [];
+            for (let i = 0; i < customers.length; i++) {
+                for (let j = i + 1; j < customers.length; j++) {
+                    const distWi = calculateDistance(warehouse.lat, warehouse.lng, customers[i].lat, customers[i].lng);
+                    const distWj = calculateDistance(warehouse.lat, warehouse.lng, customers[j].lat, customers[j].lng);
+                    const distij = calculateDistance(customers[i].lat, customers[i].lng, customers[j].lat, customers[j].lng);
+                    const saving = distWi + distWj - distij;
+                    
+                    savings.push({
+                        i: i + 1,
+                        j: j + 1,
+                        saving: saving
+                    });
+                }
+            }
+            
+            // 按节约值降序排序
+            savings.sort((a, b) => b.saving - a.saving);
+            
+            // 初始化每条路线只包含一个客户
+            let routes = customers.map((customer, index) => ({
+                nodes: [0, index + 1, 0],
+                demand: customer.demand,
+                distance: calculateDistance(warehouse.lat, warehouse.lng, customer.lat, customer.lng) * 2
+            }));
+            
+            // 合并路线
+            for (const saving of savings) {
+                const routeI = routes.find(r => r.nodes.includes(saving.i));
+                const routeJ = routes.find(r => r.nodes.includes(saving.j));
+                
+                if (routeI && routeJ && routeI !== routeJ) {
+                    const newDemand = routeI.demand + routeJ.demand;
+                    
+                    if (newDemand <= vehicleCapacity) {
+                        // 合并两条路线
+                        const newNodeSequence = routeI.nodes.slice(0, -1).concat(routeJ.nodes.slice(1));
+                        const newDistance = calculateRouteDistance(newNodeSequence);
+                        
+                        routes = routes.filter(r => r !== routeI && r !== routeJ);
+                        routes.push({
+                            nodes: newNodeSequence,
+                            demand: newDemand,
+                            distance: newDistance
+                        });
+                    }
+                }
+            }
+            
+            return calculateResult(routes);
+        }
+
+        // 最近邻算法
+        function nearestNeighborAlgorithm(nodes) {
+            const warehouse = nodes[0];
+            const unvisited = new Set(nodes.slice(1).map(n => n.id));
+            const routes = [];
+            const vehicleCapacity = parseInt(document.getElementById('vehicleCapacity').value);
+            
+            while (unvisited.size > 0) {
+                let currentNode = 0; // 从仓库开始
+                const route = [0];
+                let routeDemand = 0;
+                
+                while (unvisited.size > 0) {
+                    let nearestNode = null;
+                    let minDistance = Infinity;
+                    
+                    for (const nodeId of unvisited) {
+                        const node = nodes.find(n => n.id === nodeId);
+                        const distance = calculateDistance(
+                            nodes[currentNode].lat, nodes[currentNode].lng,
+                            node.lat, node.lng
+                        );
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestNode = node;
+                        }
+                    }
+                    
+                    if (nearestNode && routeDemand + nearestNode.demand <= vehicleCapacity) {
+                        route.push(nearestNode.id);
+                        routeDemand += nearestNode.demand;
+                        currentNode = nearestNode.id;
+                        unvisited.delete(nearestNode.id);
+                    } else {
+                        break;
+                    }
+                }
+                
+                route.push(0); // 返回仓库
+                routes.push({
+                    nodes: route,
+                    demand: routeDemand,
+                    distance: calculateRouteDistance(route)
+                });
+            }
+            
+            return calculateResult(routes);
+        }
+
+        // Dijkstra算法
+        function dijkstraAlgorithm(nodes) {
+            const warehouse = nodes[0];
+            const routes = [];
+            
+            // 为每个客户创建一条独立路线
+            for (let i = 1; i < nodes.length; i++) {
+                const distance = calculateDistance(
+                    warehouse.lat, warehouse.lng,
+                    nodes[i].lat, nodes[i].lng
+                ) * 2; // 往返
+                
+                routes.push({
+                    nodes: [0, i, 0],
+                    demand: nodes[i].demand,
+                    distance: distance
+                });
+            }
+            
+            return calculateResult(routes);
+        }
+
+        // 2-Opt算法
+        function twoOptAlgorithm(nodes) {
+            // 先使用最近邻算法获得初始解
+            const initialResult = nearestNeighborAlgorithm(nodes);
+            const routes = initialResult.routes;
+            
+            // 对每条路线应用2-opt优化
+            routes.forEach(route => {
+                let improved = true;
+                let bestDistance = route.distance;
+                
+                while (improved) {
+                    improved = false;
+                    
+                    for (let i = 1; i < route.nodes.length - 2; i++) {
+                        for (let j = i + 1; j < route.nodes.length - 1; j++) {
+                            const newRoute = twoOptSwap(route.nodes, i, j);
+                            const newDistance = calculateRouteDistance(newRoute);
+                            
+                            if (newDistance < bestDistance) {
+                                route.nodes = newRoute;
+                                route.distance = newDistance;
+                                bestDistance = newDistance;
+                                improved = true;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            return calculateResult(routes);
+        }
+
+        // 2-opt交换
+        function twoOptSwap(route, i, j) {
+            const newRoute = route.slice(0, i);
+            const reversed = route.slice(i, j + 1).reverse();
+            newRoute.push(...reversed);
+            newRoute.push(...route.slice(j + 1));
+            return newRoute;
+        }
+
+        // 扫描算法
+        function sweepAlgorithm(nodes) {
+            const warehouse = nodes[0];
+            const customers = nodes.slice(1);
+            const vehicleCapacity = parseInt(document.getElementById('vehicleCapacity').value);
+            
+            // 计算极角
+            customers.forEach(customer => {
+                const dx = customer.lng - warehouse.lng;
+                const dy = customer.lat - warehouse.lat;
+                customer.angle = Math.atan2(dy, dx);
+            });
+            
+            // 按极角排序
+            customers.sort((a, b) => a.angle - b.angle);
+            
+            const routes = [];
+            let currentRoute = [0];
+            let currentDemand = 0;
+            
+            customers.forEach(customer => {
+                if (currentDemand + customer.demand <= vehicleCapacity) {
+                    currentRoute.push(customer.id);
+                    currentDemand += customer.demand;
+                } else {
+                    currentRoute.push(0);
+                    routes.push({
+                        nodes: currentRoute,
+                        demand: currentDemand,
+                        distance: calculateRouteDistance(currentRoute)
+                    });
+                    
+                    currentRoute = [0, customer.id];
+                    currentDemand = customer.demand;
+                }
+            });
+            
+            if (currentRoute.length > 1) {
+                currentRoute.push(0);
+                routes.push({
+                    nodes: currentRoute,
+                    demand: currentDemand,
+                    distance: calculateRouteDistance(currentRoute)
+                });
+            }
+            
+            return calculateResult(routes);
+        }
+
+        // 遗传算法（简化版）
+        function geneticAlgorithm(nodes) {
+            const populationSize = parseInt(document.getElementById('populationSize').value);
+            const generations = parseInt(document.getElementById('generations').value);
+            const vehicleCapacity = parseInt(document.getElementById('vehicleCapacity').value);
+            
+            // 简化的遗传算法实现
+            let bestRoutes = [];
+            let bestDistance = Infinity;
+            
+            for (let gen = 0; gen < generations; gen++) {
+                // 随机生成路线
+                const shuffled = [...nodes.slice(1)].sort(() => Math.random() - 0.5);
+                const routes = [];
+                let currentRoute = [0];
+                let currentDemand = 0;
+                
+                shuffled.forEach(customer => {
+                    if (currentDemand + customer.demand <= vehicleCapacity) {
+                        currentRoute.push(customer.id);
+                        currentDemand += customer.demand;
+                    } else {
+                        currentRoute.push(0);
+                        routes.push({
+                            nodes: currentRoute,
+                            demand: currentDemand,
+                            distance: calculateRouteDistance(currentRoute)
+                        });
+                        currentRoute = [0, customer.id];
+                        currentDemand = customer.demand;
+                    }
+                });
+                
+                if (currentRoute.length > 1) {
+                    currentRoute.push(0);
+                    routes.push({
+                        nodes: currentRoute,
+                        demand: currentDemand,
+                        distance: calculateRouteDistance(currentRoute)
+                    });
+                }
+                
+                const totalDistance = routes.reduce((sum, r) => sum + r.distance, 0);
+                
+                if (totalDistance < bestDistance) {
+                    bestDistance = totalDistance;
+                    bestRoutes = routes;
+                }
+            }
+            
+            return calculateResult(bestRoutes);
+        }
+
+        // 计算路线距离
+        function calculateRouteDistance(route) {
+            let distance = 0;
+            for (let i = 0; i < route.length - 1; i++) {
+                const node1 = nodes.find(n => n.id === route[i]);
+                const node2 = nodes.find(n => n.id === route[i + 1]);
+                distance += calculateDistance(node1.lat, node1.lng, node2.lat, node2.lng);
+            }
+            return distance;
+        }
+
+        // 计算最终结果
+        function calculateResult(routes) {
+            const beforeDistance = routes.reduce((sum, r) => {
+                // 计算不使用优化的距离（每个客户单独往返）
+                const customerNodes = r.nodes.slice(1, -1);
+                let dist = 0;
+                customerNodes.forEach(nodeId => {
+                    const node = nodes.find(n => n.id === nodeId);
+                    dist += calculateDistance(nodes[0].lat, nodes[0].lng, node.lat, node.lng) * 2;
+                });
+                return sum + dist;
+            }, 0);
+            
+            const afterDistance = routes.reduce((sum, r) => sum + r.distance, 0);
+            const savedDistance = beforeDistance - afterDistance;
+            
+            return {
+                routes: routes,
+                beforeDistance: beforeDistance,
+                afterDistance: afterDistance,
+                savedDistance: savedDistance,
+                vehicleCount: routes.length
+            };
+        }
+
+        // 显示结果
+        function displayResults(result) {
+            document.getElementById('beforeDistance').textContent = result.beforeDistance.toFixed(1) + ' km';
+            document.getElementById('afterDistance').textContent = result.afterDistance.toFixed(1) + ' km';
+            document.getElementById('savedDistance').textContent = result.savedDistance.toFixed(1) + ' km';
+            document.getElementById('vehicleCount').textContent = result.vehicleCount + ' 辆';
+            
+            // 显示路线详情
+            const container = document.getElementById('routesContainer');
+            container.innerHTML = '';
+            
+            result.routes.forEach((route, index) => {
+                const routeDiv = document.createElement('div');
+                routeDiv.className = 'route-item';
+                
+                const nodeNames = route.nodes.map(id => {
+                    const node = nodes.find(n => n.id === id);
+                    return node.name;
+                }).join(' → ');
+                
+                routeDiv.innerHTML = `
+                    <div class="route-header">
+                        <span class="route-id">路线 ${index + 1}</span>
+                        <span class="route-distance">${route.distance.toFixed(1)} km</span>
+                    </div>
+                    <div class="route-path">${nodeNames}</div>
+                    <div style="margin-top: 10px; color: #64748b; font-size: 0.9rem;">
+                        装载量: ${route.demand} kg | 节点数: ${route.nodes.length - 2}
+                    </div>
+                `;
+                
+                container.appendChild(routeDiv);
+            });
+        }
+
+        // 绘制对比图表
+        function drawComparisonChart(result) {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['优化前', '优化后'],
+                    datasets: [{
+                        label: '总行驶距离 (km)',
+                        data: [result.beforeDistance, result.afterDistance],
+                        backgroundColor: [
+                            'rgba(255, 71, 87, 0.7)',
+                            'rgba(0, 245, 160, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 71, 87, 1)',
+                            'rgba(0, 245, 160, 1)'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#a8b2d1'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `距离: ${context.parsed.y.toFixed(1)} km`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a8b2d1'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a8b2d1'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 显示/隐藏加载动画
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+        }
+    </script>
+</body>
+</html>

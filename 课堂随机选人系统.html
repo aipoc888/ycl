@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>龙哥课堂随机选人系统</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+body{font-family:"Microsoft YaHei",sans-serif;background:linear-gradient(135deg,#6a11cb,#2575fc);min-height:100vh;padding:20px}
+.container{background:#fff;border-radius:20px;padding:25px;max-width:1300px;margin:auto}
+header{text-align:center;padding-bottom:15px}
+.course-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.course-btn{flex:1;padding:10px;border-radius:12px;border:2px solid #eee;background:#f8f8ff;cursor:pointer;font-weight:bold}
+.course-btn.active{background:#ffd166;border-color:#ffb300}
+.section{margin-top:20px}
+input,select,button{padding:8px;border-radius:8px;border:1px solid #ccc}
+button{cursor:pointer}
+button:hover{opacity:.85}
+.people-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tag{padding:6px 10px;background:#f0f0ff;border-radius:8px}
+.selected-box{font-size:38px;font-weight:bold;text-align:center;margin:20px 0}
+.table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.table th,.table td{border:1px solid #ddd;padding:6px;text-align:center}
+.status-正常{color:green}
+.status-旷课{color:red}
+.status-请假{color:orange}
+.backup{background:#f9f9ff;padding:15px;border-radius:12px;margin-top:15px}
+#fileInput{display:none}
+</style>
+</head>
+
+<body>
+<div class="container">
+<header>
+<h1>龙哥课堂随机选人系统</h1>
+<p>为热血课堂而生！</p>
+</header>
+
+<div class="course-bar" id="courseBar"></div>
+
+<div class="section">
+<button onclick="addExample()">示例名单</button>
+<button onclick="backup()">备份页面</button>
+<button onclick="restore()">恢复页面</button>
+<button onclick="resetAll()">重置页面</button>
+<input type="file" id="fileInput" accept=".json" onchange="loadBackup(event)">
+</div>
+
+<div class="section">
+<textarea id="input" rows="3" style="width:100%" placeholder="请输入人员名单，每行一个人名，也可点击添加示例名单"></textarea>
+<br>
+<button onclick="addPeople()">添加名单</button>
+<button onclick="clearPeople()">清空名单</button>
+<div class="people-list" id="peopleBox"></div>
+</div>
+
+<div class="section">
+<label>选人模式：</label>
+<select id="mode">
+<option value="repeat">可重复</option>
+<option value="unique">不重复</option>
+</select>
+<label style="margin-left:20px">速度：</label>
+<select id="speed">
+<option value="30">极快</option>
+<option value="60" selected>正常</option>
+<option value="120">慢速</option>
+</select>
+</div>
+
+<div class="section">
+<button onclick="start()">▶ 开始</button>
+<button onclick="stop()">⏹ 停止</button>
+<div class="selected-box" id="sel">等待选择...</div>
+<label>打分：</label>
+<input id="score" type="number" min="0" max="100" style="width:70px">
+<button onclick="saveScore()">✔ 保存</button>
+<button onclick="setStatus('正常')">✅ 正常</button>
+<button onclick="setStatus('旷课')">❌ 旷课</button>
+<button onclick="setStatus('请假')">✈ 请假</button>
+</div>
+
+<div class="backup">
+<button onclick="exportExcel()">￥ 导出记录Excel</button>
+</div>
+
+<table class="table">
+<thead>
+<tr>
+<th>姓名</th><th>课程</th><th>分数</th><th>状态</th><th>选中次数</th><th>时间</th>
+</tr>
+</thead>
+<tbody id="history"></tbody>
+</table>
+</div>
+
+<script>
+const courses={};
+for(let i=1;i<=6;i++)courses[i]={name:`课程${i}`,people:[],history:[],selected:{}};
+let cur=1,timer=null;
+
+/* ✅ 修复：init 从本地存储加载 */
+function init(){
+  const saved = localStorage.getItem('courses_data');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    Object.keys(parsed).forEach(k => {
+      if (courses[k]) courses[k] = { ...courses[k], ...parsed[k] };
+    });
+  }
+  const bar=document.getElementById('courseBar');
+  Object.keys(courses).forEach(k=>{
+    const b=document.createElement('button');
+    b.className='course-btn';
+    b.textContent=courses[k].name;
+    b.onclick=()=>switchCourse(k);
+    b.ondblclick=()=>renameCourse(b,k);
+    bar.appendChild(b);
+  });
+  switchCourse(1);
+}
+init();
+
+function switchCourse(id){
+  cur=id;refresh();
+  document.querySelectorAll('.course-btn').forEach((b,i)=>b.classList.toggle('active',i+1==id));
+}
+
+function renameCourse(b,k){
+  const n=prompt("输入新课程名",courses[k].name);
+  if(n){courses[k].name=n;b.textContent=n;}
+}
+
+function addExample(){
+  ["张三","李四","王五","赵六","禹禄佳","柏灿","张涛","周俊男","尹得晴","白思琪","江美","杨颖"].forEach(p=>{
+    if(!courses[cur].people.includes(p))courses[cur].people.push(p);
+  });
+  refresh();
+}
+
+function addPeople(){
+  document.getElementById('input').value.trim().split('\n').forEach(p=>{
+    p=p.trim();if(p&&!courses[cur].people.includes(p))courses[cur].people.push(p);
+  });
+  refresh();
+}
+
+function clearPeople(){courses[cur].people=[];refresh();}
+
+function start(){
+  if(timer)return;
+  const speed=+document.getElementById('speed').value;
+  timer=setInterval(()=>{
+    const list=courses[cur].people;
+    if(!list.length)return;
+    document.getElementById('sel').textContent=list[Math.floor(Math.random()*list.length)];
+  },speed);
+}
+
+function stop(){
+  clearInterval(timer);timer=null;
+  record(document.getElementById('sel').textContent);
+}
+
+function record(name){
+  if(!name)return;
+  const now=new Date();
+  const t=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${now.toTimeString().slice(0,8)}`;
+  courses[cur].history.unshift({name,score:null,status:'正常',time:t});
+  courses[cur].selected[name]=(courses[cur].selected[name]||0)+1;
+  refresh();
+}
+
+function saveScore(){
+  const h=courses[cur].history[0];
+  if(h)h.score=+document.getElementById('score').value;
+  refresh();
+}
+
+function setStatus(s){
+  const h=courses[cur].history[0];
+  if(h)h.status=s;
+  refresh();
+}
+
+function refresh(){
+  const c=courses[cur];
+  document.getElementById('peopleBox').innerHTML=c.people.map(p=>`<div class="tag">${p}</div>`).join('');
+  document.getElementById('history').innerHTML=c.history.map(h=>`
+    <tr>
+      <td>${h.name}</td>
+      <td>${c.name}</td>
+      <td>${h.score??'-'}</td>
+      <td class="status-${h.status}">${h.status}</td>
+      <td>${c.selected[h.name]||0}</td>
+      <td>${h.time}</td>
+    </tr>
+  `).join('');
+}
+
+/* ✅ 备份：导出文件 */
+function backup(){
+  const data=JSON.stringify(courses,null,2);
+  const blob=new Blob([data],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`课堂备份_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+/* ✅ 恢复：保存到本地存储 */
+function restore(){document.getElementById('fileInput').click();}
+
+function loadBackup(e){
+  const f=e.target.files[0];
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      localStorage.setItem('courses_data', JSON.stringify(d)); // ✅ 持久化
+      location.reload();
+    }catch{
+      alert("❌ 备份文件损坏");
+    }
+  };
+  r.readAsText(f);
+}
+
+/* ✅ 重置：清除本地存储 */
+function resetAll(){
+  if(confirm("确定清空所有？")){
+    localStorage.removeItem('courses_data');
+    location.reload();
+  }
+}
+
+function exportExcel(){
+  const data=[];
+  Object.values(courses).forEach(c=>{
+    c.people.forEach(p=>{
+      data.push({
+        课程名:c.name,
+        姓名:p,
+        选中次数:c.selected[p]||0,
+        分数:'',
+        状态:'未选中',
+        时间:''
+      });
+    });
+    c.history.forEach(h=>{
+      data.push({
+        课程名:c.name,
+        姓名:h.name,
+        选中次数:c.selected[h.name]||0,
+        分数:h.score??'',
+        状态:h.status,
+        时间:h.time
+      });
+    });
+  });
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"课堂记录");
+  const now = new Date();
+  const timeStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+  XLSX.writeFile(wb, `课堂考勤记录_${timeStr}.xlsx`); 
+}
+</script>
+</body>
+</html>

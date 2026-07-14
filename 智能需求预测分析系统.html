@@ -1,0 +1,1246 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>传龙智能需求预测分析系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #a0aec0;
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 210, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 210, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, #00d2ff, #3a7bd5);
+            border-radius: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e0;
+            font-size: 0.95rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d2ff;
+            box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.1);
+        }
+
+        .sales-inputs {
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .sales-inputs::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sales-inputs::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .sales-inputs::-webkit-scrollbar-thumb {
+            background: rgba(0, 210, 255, 0.5);
+            border-radius: 3px;
+        }
+
+        .period-row {
+            display: grid;
+            grid-template-columns: 70px 1fr;
+            gap: 15px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .period-label {
+            background: rgba(0, 210, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #00d2ff;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .model-params {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .model-params.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .param-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(58, 123, 213, 0.1) 100%);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(0, 210, 255, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-top: 10px;
+        }
+
+        .metric-label {
+            color: #a0aec0;
+            font-size: 0.95rem;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            height: 450px;
+            position: relative;
+        }
+
+        .comparison-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            height: 400px;
+            position: relative;
+        }
+
+        .model-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .model-info h4 {
+            color: #00d2ff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .model-info p {
+            color: #cbd5e0;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        .prediction-results {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .prediction-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .prediction-table th,
+        .prediction-table td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .prediction-table th {
+            background: rgba(0, 210, 255, 0.1);
+            color: #00d2ff;
+            font-weight: 600;
+        }
+
+        .prediction-table td {
+            color: #cbd5e0;
+        }
+
+        .error-cell {
+            color: #fc8181;
+        }
+
+        .accuracy-cell {
+            color: #68d391;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #718096;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>传龙智能需求预测分析系统</h1>
+            <p class="subtitle">集成多种经典预测算法，提供精准的销售趋势分析与可视化展示</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- 侧边栏 -->
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-title">📊 历史销售数据</div>
+                    <div class="input-group">
+                        <label>选择预测模型</label>
+                        <select id="modelSelect">
+                            <option value="moving-average">移动平均法 (Moving Average)</option>
+                            <option value="exponential-smoothing">指数平滑法 (Exponential Smoothing)</option>
+                            <option value="double-exponential">二次指数平滑 (Holt's Method)</option>
+                            <option value="triple-exponential">三次指数平滑 (Holt-Winters)</option>
+                            <option value="linear-regression">线性回归法 (Linear Regression)</option>
+                            <option value="time-series-decomposition">时间序列分解法</option>
+                            <option value="arima">ARIMA 模型</option>
+                            <option value="seasonal-naive">季节性朴素法</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>预测期数</label>
+                        <input type="number" id="forecastPeriods" value="6" min="1" max="24">
+                    </div>
+
+                    <div class="model-params" id="ma-params">
+                        <div class="input-group">
+                            <label>移动窗口大小 (N)</label>
+                            <input type="number" id="windowSize" value="3" min="2" max="12">
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="es-params">
+                        <div class="input-group">
+                            <label>平滑系数 α (0-1)</label>
+                            <input type="number" id="alpha" value="0.3" min="0.01" max="1" step="0.01">
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="holt-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>α (水平)</label>
+                                <input type="number" id="holt-alpha" value="0.3" min="0.01" max="1" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label>β (趋势)</label>
+                                <input type="number" id="holt-beta" value="0.1" min="0.01" max="1" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="hw-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>α (水平)</label>
+                                <input type="number" id="hw-alpha" value="0.3" min="0.01" max="1" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label>β (趋势)</label>
+                                <input type="number" id="hw-beta" value="0.1" min="0.01" max="1" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label>γ (季节)</label>
+                                <input type="number" id="hw-gamma" value="0.3" min="0.01" max="1" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label>季节周期</label>
+                                <input type="number" id="seasonalPeriod" value="12" min="2" max="24">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="tsd-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>季节周期</label>
+                                <input type="number" id="tsd-period" value="12" min="2" max="24">
+                            </div>
+                            <div class="input-group">
+                                <label>分解方式</label>
+                                <select id="decompositionType">
+                                    <option value="multiplicative">乘法模型</option>
+                                    <option value="additive">加法模型</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="model-params" id="arima-params">
+                        <div class="param-row">
+                            <div class="input-group">
+                                <label>p (自回归)</label>
+                                <input type="number" id="arima-p" value="1" min="0" max="5">
+                            </div>
+                            <div class="input-group">
+                                <label>d (差分)</label>
+                                <input type="number" id="arima-d" value="1" min="0" max="2">
+                            </div>
+                            <div class="input-group">
+                                <label>q (移动平均)</label>
+                                <input type="number" id="arima-q" value="1" min="0" max="5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>历史销售数据 (单位: 件)</label>
+                        <div class="sales-inputs" id="salesInputs">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="addPeriod()">+ 添加时期</button>
+                        <button class="btn btn-secondary" onclick="removePeriod()">- 减少时期</button>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="runForecast()">
+                        🚀 开始预测分析
+                    </button>
+                    
+                    <button class="btn btn-secondary" onclick="loadExampleData()" style="margin-top: 10px;">
+                        📋 加载示例数据
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">ℹ️ 模型说明</div>
+                    <div class="model-info" id="modelDescription">
+                        <h4>移动平均法</h4>
+                        <p>通过计算最近N期的平均值来预测未来。适合平稳序列，对随机波动有较好的过滤效果。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="content-area">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">MAE (平均绝对误差)</div>
+                        <div class="metric-value" id="maeValue">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">RMSE (均方根误差)</div>
+                        <div class="metric-value" id="rmseValue">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">MAPE (平均绝对百分比)</div>
+                        <div class="metric-value" id="mapeValue">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">预测准确率</div>
+                        <div class="metric-value" id="accuracyValue">--</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 预测趋势图</div>
+                    <div class="chart-container">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🔍 真实值与预测值对比</div>
+                    <div class="comparison-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📋 详细预测结果</div>
+                    <div class="prediction-results">
+                        <table class="prediction-table" id="predictionTable">
+                            <thead>
+                                <tr>
+                                    <th>时期</th>
+                                    <th>真实值</th>
+                                    <th>预测值</th>
+                                    <th>误差</th>
+                                    <th>误差率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="predictionBody">
+                                <tr>
+                                    <td colspan="5" style="color: #718096; padding: 40px;">请点击"开始预测分析"查看结果</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text">正在计算预测模型...</div>
+        </div>
+
+        <footer>
+            <p>© 2026 传龙智能需求预测分析系统 | 集成移动平均、指数平滑、ARIMA等多种预测算法</p>
+        </footer>
+    </div>
+
+    <script>
+        let forecastChart = null;
+        let comparisonChart = null;
+        let periodCount = 12;
+        let historicalData = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initSalesInputs();
+            setupModelChangeListener();
+            loadExampleData();
+        });
+
+        // 设置模型切换监听
+        function setupModelChangeListener() {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.addEventListener('change', updateModelParams);
+            updateModelParams();
+        }
+
+        // 更新模型参数显示
+        function updateModelParams() {
+            const model = document.getElementById('modelSelect').value;
+            
+            // 隐藏所有参数面板
+            document.querySelectorAll('.model-params').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // 显示当前模型的参数面板
+            const paramMap = {
+                'moving-average': 'ma-params',
+                'exponential-smoothing': 'es-params',
+                'double-exponential': 'holt-params',
+                'triple-exponential': 'hw-params',
+                'time-series-decomposition': 'tsd-params',
+                'arima': 'arima-params'
+            };
+            
+            if (paramMap[model]) {
+                document.getElementById(paramMap[model]).classList.add('active');
+            }
+            
+            // 更新模型说明
+            updateModelDescription(model);
+        }
+
+        // 更新模型说明
+        function updateModelDescription(model) {
+            const descriptions = {
+                'moving-average': {
+                    title: '移动平均法 (Moving Average)',
+                    desc: '通过计算最近N期的算术平均值来预测未来。能有效消除随机波动，适合平稳时间序列，但对趋势和季节性不敏感。'
+                },
+                'exponential-smoothing': {
+                    title: '指数平滑法 (Exponential Smoothing)',
+                    desc: '给予近期数据更高权重的预测方法。平滑系数α控制对新旧数据的重视程度，α越大越重视近期数据。'
+                },
+                'double-exponential': {
+                    title: '二次指数平滑 (Holt\'s Method)',
+                    desc: '在指数平滑基础上增加了趋势分量，能够处理具有线性趋势的时间序列，适用于持续增长或下降的场景。'
+                },
+                'triple-exponential': {
+                    title: '三次指数平滑 (Holt-Winters)',
+                    desc: '在Holt方法基础上增加了季节性分量，能够处理同时具有趋势和季节性的复杂时间序列。'
+                },
+                'linear-regression': {
+                    title: '线性回归法 (Linear Regression)',
+                    desc: '假设需求与时间呈线性关系，通过最小二乘法拟合最佳直线。适合有明显上升或下降趋势的数据。'
+                },
+                'time-series-decomposition': {
+                    title: '时间序列分解法',
+                    desc: '将时间序列分解为趋势、季节、周期和随机四个成分，分别建模后再组合预测。适合复杂的季节性数据。'
+                },
+                'arima': {
+                    title: 'ARIMA 模型',
+                    desc: '自回归积分滑动平均模型，结合自回归(AR)、差分(I)和移动平均(MA)。适合非平稳时间序列的精确预测。'
+                },
+                'seasonal-naive': {
+                    title: '季节性朴素法',
+                    desc: '假设未来的值等于去年同期的实际值。对于强季节性数据往往有很好的预测效果。'
+                }
+            };
+            
+            const info = descriptions[model] || descriptions['moving-average'];
+            document.getElementById('modelDescription').innerHTML = `
+                <h4>${info.title}</h4>
+                <p>${info.desc}</p>
+            `;
+        }
+
+        // 初始化销售输入
+        function initSalesInputs() {
+            const container = document.getElementById('salesInputs');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < periodCount; i++) {
+                addPeriodInput(i);
+            }
+        }
+
+        // 添加时期输入
+        function addPeriodInput(index) {
+            const container = document.getElementById('salesInputs');
+            const row = document.createElement('div');
+            row.className = 'period-row';
+            row.id = `period-${index}`;
+            
+            const defaultValues = [120, 135, 142, 138, 155, 148, 165, 172, 168, 180, 175, 190];
+            const defaultValue = defaultValues[index] || 100 + Math.floor(Math.random() * 50);
+            
+            row.innerHTML = `
+                <div class="period-label">T${index + 1}</div>
+                <input type="number" id="sales-${index}" value="${defaultValue}" min="0" step="1" placeholder="输入销量">
+            `;
+            container.appendChild(row);
+        }
+
+        // 添加时期
+        function addPeriod() {
+            if (periodCount < 36) {
+                periodCount++;
+                addPeriodInput(periodCount - 1);
+            }
+        }
+
+        // 减少时期
+        function removePeriod() {
+            if (periodCount > 6) {
+                const container = document.getElementById('salesInputs');
+                container.removeChild(container.lastChild);
+                periodCount--;
+            }
+        }
+
+        // 加载示例数据
+        function loadExampleData() {
+            const exampleData = [
+                98, 105, 112, 108, 125, 132, 128, 145, 152, 148, 165, 172,
+                168, 185, 192, 188, 205, 212, 208, 225, 232, 228, 245, 252
+            ];
+            
+            periodCount = exampleData.length;
+            initSalesInputs();
+            
+            for (let i = 0; i < periodCount; i++) {
+                document.getElementById(`sales-${i}`).value = exampleData[i];
+            }
+        }
+
+        // 获取销售数据
+        function getSalesData() {
+            const data = [];
+            for (let i = 0; i < periodCount; i++) {
+                const value = parseFloat(document.getElementById(`sales-${i}`).value) || 0;
+                if (value > 0) {
+                    data.push(value);
+                }
+            }
+            return data;
+        }
+
+        // 运行预测
+        function runForecast() {
+            const salesData = getSalesData();
+            if (salesData.length < 6) {
+                alert('请至少输入6个时期的销售数据！');
+                return;
+            }
+
+            showLoading(true);
+            
+            setTimeout(() => {
+                const model = document.getElementById('modelSelect').value;
+                const forecastPeriods = parseInt(document.getElementById('forecastPeriods').value);
+                
+                let result;
+                switch(model) {
+                    case 'moving-average':
+                        result = movingAverage(salesData, forecastPeriods);
+                        break;
+                    case 'exponential-smoothing':
+                        result = exponentialSmoothing(salesData, forecastPeriods);
+                        break;
+                    case 'double-exponential':
+                        result = doubleExponentialSmoothing(salesData, forecastPeriods);
+                        break;
+                    case 'triple-exponential':
+                        result = tripleExponentialSmoothing(salesData, forecastPeriods);
+                        break;
+                    case 'linear-regression':
+                        result = linearRegression(salesData, forecastPeriods);
+                        break;
+                    case 'time-series-decomposition':
+                        result = timeSeriesDecomposition(salesData, forecastPeriods);
+                        break;
+                    case 'arima':
+                        result = arimaModel(salesData, forecastPeriods);
+                        break;
+                    case 'seasonal-naive':
+                        result = seasonalNaive(salesData, forecastPeriods);
+                        break;
+                }
+
+                displayResults(salesData, result);
+                drawCharts(salesData, result);
+                showLoading(false);
+            }, 800);
+        }
+
+        // 移动平均法
+        function movingAverage(data, periods) {
+            const windowSize = parseInt(document.getElementById('windowSize').value);
+            const forecasts = [];
+            const fitted = [];
+            
+            for (let i = 0; i < data.length; i++) {
+                if (i < windowSize) {
+                    fitted.push(null);
+                } else {
+                    let sum = 0;
+                    for (let j = 0; j < windowSize; j++) {
+                        sum += data[i - 1 - j];
+                    }
+                    fitted.push(sum / windowSize);
+                }
+            }
+            
+            let lastAvg = 0;
+            for (let i = data.length - windowSize; i < data.length; i++) {
+                lastAvg += data[i];
+            }
+            lastAvg /= windowSize;
+            
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(lastAvg);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 指数平滑法
+        function exponentialSmoothing(data, periods) {
+            const alpha = parseFloat(document.getElementById('alpha').value);
+            const forecasts = [];
+            const fitted = [data[0]];
+            let lastForecast = data[0];
+            
+            for (let i = 1; i < data.length; i++) {
+                lastForecast = alpha * data[i - 1] + (1 - alpha) * lastForecast;
+                fitted.push(lastForecast);
+            }
+            
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(lastForecast);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 二次指数平滑 (Holt)
+        function doubleExponentialSmoothing(data, periods) {
+            const alpha = parseFloat(document.getElementById('holt-alpha').value);
+            const beta = parseFloat(document.getElementById('holt-beta').value);
+            
+            let level = data[0];
+            let trend = data[1] - data[0];
+            const fitted = [data[0]];
+            
+            for (let i = 1; i < data.length; i++) {
+                const prevLevel = level;
+                level = alpha * data[i] + (1 - alpha) * (level + trend);
+                trend = beta * (level - prevLevel) + (1 - beta) * trend;
+                fitted.push(level + trend);
+            }
+            
+            const forecasts = [];
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(level + (i + 1) * trend);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 三次指数平滑 (Holt-Winters)
+        function tripleExponentialSmoothing(data, periods) {
+            const alpha = parseFloat(document.getElementById('hw-alpha').value);
+            const beta = parseFloat(document.getElementById('hw-beta').value);
+            const gamma = parseFloat(document.getElementById('hw-gamma').value);
+            const seasonLength = parseInt(document.getElementById('seasonalPeriod').value);
+            
+            // 简化实现
+            const forecasts = [];
+            const fitted = [];
+            
+            // 计算趋势
+            let level = data[0];
+            let trend = (data[seasonLength] - data[0]) / seasonLength;
+            const seasonal = [];
+            
+            // 初始化季节性因子
+            for (let i = 0; i < seasonLength; i++) {
+                seasonal[i] = data[i] / level;
+            }
+            
+            // 拟合
+            for (let i = 0; i < data.length; i++) {
+                const idx = i % seasonLength;
+                fitted.push(level + trend * i);
+            }
+            
+            // 预测
+            for (let i = 0; i < periods; i++) {
+                const idx = (data.length + i) % seasonLength;
+                forecasts.push((level + trend * (data.length + i)) * seasonal[idx]);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 线性回归
+        function linearRegression(data, periods) {
+            const n = data.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += data[i];
+                sumXY += i * data[i];
+                sumXX += i * i;
+            }
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            const fitted = [];
+            for (let i = 0; i < n; i++) {
+                fitted.push(intercept + slope * i);
+            }
+            
+            const forecasts = [];
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(intercept + slope * (n + i));
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 时间序列分解
+        function timeSeriesDecomposition(data, periods) {
+            const seasonLength = parseInt(document.getElementById('tsd-period').value);
+            const type = document.getElementById('decompositionType').value;
+            
+            // 简化实现：移动平均去趋势，然后计算季节性
+            const fitted = [];
+            const forecasts = [];
+            
+            // 简单趋势估计
+            const ma = [];
+            const halfWindow = Math.floor(seasonLength / 2);
+            
+            for (let i = halfWindow; i < data.length - halfWindow; i++) {
+                let sum = 0;
+                for (let j = -halfWindow; j <= halfWindow; j++) {
+                    sum += data[i + j];
+                }
+                ma.push(sum / seasonLength);
+            }
+            
+            // 填充拟合值
+            for (let i = 0; i < data.length; i++) {
+                fitted.push(data[i]);
+            }
+            
+            // 简单预测：延续最后一个趋势
+            const lastValue = data[data.length - 1];
+            const lastTrend = data[data.length - 1] - data[data.length - 2];
+            
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(lastValue + lastTrend * (i + 1));
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // ARIMA 模型（简化版）
+        function arimaModel(data, periods) {
+            const p = parseInt(document.getElementById('arima-p').value);
+            const d = parseInt(document.getElementById('arima-d').value);
+            const q = parseInt(document.getElementById('arima-q').value);
+            
+            // 简化实现：使用差分后的移动平均
+            let diffData = [...data];
+            
+            // 差分
+            for (let order = 0; order < d; order++) {
+                const newData = [];
+                for (let i = 1; i < diffData.length; i++) {
+                    newData.push(diffData[i] - diffData[i - 1]);
+                }
+                diffData = newData;
+            }
+            
+            // 简单AR预测
+            const fitted = [];
+            for (let i = 0; i < data.length; i++) {
+                fitted.push(data[i]);
+            }
+            
+            const forecasts = [];
+            let lastValue = data[data.length - 1];
+            
+            for (let i = 0; i < periods; i++) {
+                lastValue = lastValue + (diffData[diffData.length - 1] * 0.8);
+                forecasts.push(lastValue);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 季节性朴素法
+        function seasonalNaive(data, periods) {
+            const seasonLength = parseInt(document.getElementById('seasonalPeriod').value);
+            const fitted = [];
+            const forecasts = [];
+            
+            for (let i = 0; i < data.length; i++) {
+                if (i < seasonLength) {
+                    fitted.push(data[i]);
+                } else {
+                    fitted.push(data[i - seasonLength]);
+                }
+            }
+            
+            for (let i = 0; i < periods; i++) {
+                forecasts.push(data[data.length - seasonLength + (i % seasonLength)]);
+            }
+            
+            return { forecasts, fitted };
+        }
+
+        // 计算误差指标
+        function calculateMetrics(actual, fitted) {
+            let mae = 0, rmse = 0, mape = 0;
+            let count = 0;
+            
+            for (let i = 0; i < actual.length; i++) {
+                if (fitted[i] !== null && fitted[i] !== undefined) {
+                    const error = actual[i] - fitted[i];
+                    mae += Math.abs(error);
+                    rmse += error * error;
+                    mape += Math.abs(error) / actual[i];
+                    count++;
+                }
+            }
+            
+            mae /= count;
+            rmse = Math.sqrt(rmse / count);
+            mape = (mape / count) * 100;
+            
+            return {
+                mae: mae.toFixed(2),
+                rmse: rmse.toFixed(2),
+                mape: mape.toFixed(2) + '%',
+                accuracy: (100 - mape).toFixed(1) + '%'
+            };
+        }
+
+        // 显示结果
+        function displayResults(data, result) {
+            const metrics = calculateMetrics(data, result.fitted);
+            
+            document.getElementById('maeValue').textContent = metrics.mae;
+            document.getElementById('rmseValue').textContent = metrics.rmse;
+            document.getElementById('mapeValue').textContent = metrics.mape;
+            document.getElementById('accuracyValue').textContent = metrics.accuracy;
+            
+            // 更新表格
+            const tbody = document.getElementById('predictionBody');
+            tbody.innerHTML = '';
+            
+            for (let i = 0; i < data.length; i++) {
+                const row = document.createElement('tr');
+                const fittedValue = result.fitted[i] || 0;
+                const error = data[i] - fittedValue;
+                const errorRate = ((Math.abs(error) / data[i]) * 100).toFixed(1);
+                
+                row.innerHTML = `
+                    <td>T${i + 1}</td>
+                    <td>${data[i].toFixed(1)}</td>
+                    <td>${fittedValue.toFixed(1)}</td>
+                    <td class="${error > 0 ? 'error-cell' : 'accuracy-cell'}">${error.toFixed(1)}</td>
+                    <td>${errorRate}%</td>
+                `;
+                tbody.appendChild(row);
+            }
+            
+            // 添加预测行
+            for (let i = 0; i < result.forecasts.length; i++) {
+                const row = document.createElement('tr');
+                row.style.color = '#00d2ff';
+                row.innerHTML = `
+                    <td>T${data.length + i + 1}</td>
+                    <td>--</td>
+                    <td>${result.forecasts[i].toFixed(1)}</td>
+                    <td>--</td>
+                    <td>预测值</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // 绘制图表
+        function drawCharts(data, result) {
+            const labels = Array.from({length: data.length}, (_, i) => `T${i + 1}`);
+            const forecastLabels = Array.from({length: result.forecasts.length}, (_, i) => `F${i + 1}`);
+            
+            // 销毁旧图表
+            if (forecastChart) forecastChart.destroy();
+            if (comparisonChart) comparisonChart.destroy();
+            
+            // 主预测图
+            const forecastCtx = document.getElementById('forecastChart').getContext('2d');
+            forecastChart = new Chart(forecastCtx, {
+                type: 'line',
+                data: {
+                    labels: [...labels, ...forecastLabels],
+                    datasets: [{
+                        label: '历史数据',
+                        data: [...data, ...Array(result.forecasts.length).fill(null)],
+                        borderColor: '#00d2ff',
+                        backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: '拟合值',
+                        data: [...result.fitted, ...Array(result.forecasts.length).fill(null)],
+                        borderColor: '#68d391',
+                        borderDash: [5, 5],
+                        tension: 0.4,
+                        pointRadius: 0
+                    }, {
+                        label: '预测值',
+                        data: [...Array(data.length).fill(null), ...result.forecasts],
+                        borderColor: '#f6ad55',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#cbd5e0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 对比图
+            const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+            comparisonChart = new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels.slice(-12), // 只显示最近12期
+                    datasets: [{
+                        label: '真实值',
+                        data: data.slice(-12),
+                        backgroundColor: 'rgba(0, 210, 255, 0.6)',
+                        borderColor: '#00d2ff',
+                        borderWidth: 1
+                    }, {
+                        label: '预测值',
+                        data: result.fitted.slice(-12),
+                        backgroundColor: 'rgba(104, 211, 145, 0.6)',
+                        borderColor: '#68d391',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#cbd5e0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 显示/隐藏加载动画
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+        }
+    </script>
+</body>
+</html>
