@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智管先锋——基于多模态交互的运营管理AI教学智能助手</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); height: 100vh; display: flex; color: #e2e8f0; overflow: hidden; }
+        
+        /* 左侧聊天区 */
+        .chat-container { width: 35%; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-right: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; }
+        .chat-header { padding: 15px 20px; border-bottom: 1px solid rgba(56, 189, 248, 0.2); display: flex; justify-content: space-between; align-items: center; }
+        .chat-header-left h1 { font-size: 1.3rem; background: linear-gradient(90deg, #38bdf8, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .chat-header-left p { font-size: 0.8rem; color: #94a3b8; margin-top: 3px; }
+        .settings-btn { width: 36px; height: 36px; background: rgba(56, 189, 248, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #38bdf8; cursor: pointer; transition: all 0.3s; }
+        .settings-btn:hover { background: rgba(56, 189, 248, 0.3); transform: rotate(30deg); }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; }
+        .message { margin-bottom: 15px; display: flex; }
+        .message.user { justify-content: flex-end; }
+        .message.ai { justify-content: flex-start; }
+        .message-bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; line-height: 1.6; font-size: 0.95rem; }
+        .message.ai .message-bubble { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-top-left-radius: 0; }
+        .message.user .message-bubble { background: rgba(34, 211, 238, 0.2); border-top-right-radius: 0; }
+        .chat-input-area { padding: 20px; border-top: 1px solid rgba(56, 189, 248, 0.2); display: flex; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.2); background: rgba(15, 23, 42, 0.8); color: #e2e8f0; outline: none; }
+        .chat-input-area button { padding: 12px 20px; border: none; border-radius: 10px; background: linear-gradient(135deg, #38bdf8, #22d3ee); color: #0f172a; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .chat-input-area button:hover { transform: scale(1.05); }
+        
+        /* 右侧工具区 */
+        .tools-container { width: 65%; padding: 20px; overflow-y: auto; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .section-title { font-size: 1.5rem; color: #38bdf8; border-bottom: 2px solid #38bdf8; padding-bottom: 10px; }
+        .add-card-btn { padding: 8px 16px; background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; border-radius: 8px; color: #38bdf8; cursor: pointer; transition: all 0.3s; }
+        .add-card-btn:hover { background: rgba(56, 189, 248, 0.2); }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        
+        /* 卡片样式 */
+        .tool-card { background: rgba(30, 41, 59, 0.6); border-radius: 16px; padding: 20px; border: 1px solid rgba(56, 189, 248, 0.1); transition: all 0.3s ease; cursor: pointer; position: relative; }
+        .tool-card:hover { transform: translateY(-5px); border-color: #38bdf8; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.1); }
+        .card-edit-btn { position: absolute; top: 15px; right: 15px; width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #94a3b8; cursor: pointer; opacity: 0; transition: all 0.3s; z-index: 10; }
+        .tool-card:hover .card-edit-btn { opacity: 1; }
+        .card-edit-btn:hover { background: rgba(56, 189, 248, 0.3); color: #38bdf8; }
+        .tool-card i { font-size: 2rem; color: #38bdf8; margin-bottom: 10px; }
+        .tool-card h3 { margin-bottom: 10px; color: #fff; font-size: 1.1rem; }
+        .tool-card p { font-size: 0.9rem; color: #a8b2d1; line-height: 1.4; margin-bottom: 15px; }
+        .tool-card .file-tag { padding: 4px 8px; background: rgba(56, 189, 248, 0.1); border-radius: 4px; font-size: 0.8rem; color: #38bdf8; display: inline-block; }
+        
+        /* 设置面板 */
+        .settings-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 3000; }
+        .settings-content { background: #1e293b; padding: 30px; border-radius: 16px; width: 90%; max-width: 500px; position: relative; }
+        .settings-close-btn { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: color 0.3s; }
+        .settings-close-btn:hover { color: #38bdf8; }
+        .settings-title { font-size: 1.3rem; color: #38bdf8; margin-bottom: 20px; }
+        .settings-btns { display: flex; flex-direction: column; gap: 15px; }
+        .settings-btn-item { padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; display: flex; align-items: center; gap: 12px; }
+        .settings-btn-item.export { background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .settings-btn-item.export:hover { background: rgba(34, 197, 94, 0.2); }
+        .settings-btn-item.import { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .settings-btn-item.import:hover { background: rgba(59, 130, 246, 0.2); }
+        .settings-btn-item.reset { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .settings-btn-item.reset:hover { background: rgba(239, 68, 68, 0.2); }
+        .settings-tips { font-size: 0.85rem; color: #94a3b8; margin-top: 20px; line-height: 1.5; }
+        .settings-tips code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #38bdf8; }
+        
+        /* 编辑弹窗 */
+        .edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 2000; }
+        .edit-modal-content { background: #1e293b; padding: 30px; border-radius: 16px; width: 90%; max-width: 550px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .edit-close-btn { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: color 0.3s; }
+        .edit-close-btn:hover { color: #38bdf8; }
+        .edit-modal-title { font-size: 1.3rem; color: #38bdf8; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #cbd5e0; font-size: 0.95rem; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.2); background: rgba(15, 23, 42, 0.8); color: #e2e8f0; outline: none; font-size: 0.95rem; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-tips { font-size: 0.8rem; color: #94a3b8; margin-top: 5px; line-height: 1.4; }
+        .form-tips code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #38bdf8; }
+        .edit-modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+        .edit-modal-btn { padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .edit-modal-btn.primary { background: linear-gradient(135deg, #38bdf8, #22d3ee); color: #0f172a; border: none; }
+        .edit-modal-btn.secondary { background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); }
+        .edit-modal-btn.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        
+        /* 使用指引 */
+        .guide-panel { margin-top: 40px; background: rgba(30, 41, 59, 0.6); border-radius: 16px; padding: 20px; border: 1px solid rgba(56, 189, 248, 0.1); }
+        .guide-title { font-size: 1.1rem; color: #38bdf8; margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .guide-content { display: none; line-height: 1.6; color: #a8b2d1; font-size: 0.9rem; }
+        .guide-content.active { display: block; }
+        .guide-content ul { padding-left: 20px; margin-top: 10px; }
+        .guide-content li { margin-bottom: 8px; }
+        .guide-content code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; color: #38bdf8; }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.5); border-radius: 4px; }
+        
+        /* 隐藏文件输入框 */
+        #importConfigInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 左侧聊天区 -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="chat-header-left">
+                <h1><i class="fas fa-robot"></i> 智管先锋</h1>
+                <p>基于多模态交互的运营管理AI教学智能助手</p>
+            </div>
+            <div class="settings-btn" onclick="openSettingsPanel()" title="配置管理">
+                <i class="fas fa-cog"></i>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message ai">
+                <div class="message-bubble">
+                    👋 您好！我是运营管理AI智能助手，知识库已覆盖：<br><br>
+                    ✅ 工商管理核心理论（战略/营销/人力/财务）<br>
+                    ✅ 运营管理全模块（流程/库存/质量/项目/供应链）<br>
+                    ✅ 物流管理全链路（运输/仓储/配送/逆向物流）<br>
+                    ✅ 大数据算法原理（预测/优化/可视化）<br>
+                    ✅ 6大核心系统工具+3大资源库全知识点<br><br>
+                    💡 支持提问示例：<br>
+                    • 专业名词：EOQ模型的假设条件是什么？<br>
+                    • 算法原理：遗传算法的交叉操作怎么实现？<br>
+                    • 工具用法：重心法的迭代公式是什么？<br>
+                    • 实训步骤：连锁便利店选址+配送的实训流程？<br>
+                    • 校企合作案例关联：TX水泥的物流优化措施有哪些？<br><br>
+                    点击右上角⚙️可导出配置，换电脑导入即可保留所有自定义内容~
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="userInput" placeholder="输入专业问题，如：重心法的迭代公式是什么？" onkeypress="if(event.key==='Enter')sendMessage()">
+            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- 右侧工具区 -->
+    <div class="tools-container">
+        <!-- 核心系统工具区 -->
+        <div class="section-header">
+            <h2 class="section-title">🛠️ 核心系统工具箱</h2>
+            <button class="add-card-btn" onclick="openEditModal('add-tool')"><i class="fas fa-plus"></i> 新增工具卡片</button>
+        </div>
+        <div class="tools-grid" id="toolsGrid">
+            <!-- 动态渲染工具卡片 -->
+        </div>
+
+        <!-- 产教融合资源区 -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h2 class="section-title">🤝 产教融合资源库</h2>
+            <button class="add-card-btn" onclick="openEditModal('add-resource')"><i class="fas fa-plus"></i> 新增资源卡片</button>
+        </div>
+        <div class="tools-grid" id="resourcesGrid">
+            <!-- 动态渲染资源卡片 -->
+        </div>
+
+        <!-- 使用指引 -->
+        <div class="guide-panel">
+            <div class="guide-title" onclick="toggleGuide()">
+                <i class="fas fa-question-circle"></i> 使用指引（点击展开）
+            </div>
+            <div class="guide-content" id="guideContent">
+                <p><strong>1. 跨设备配置迁移</strong></p>
+                <ul>
+                    <li>点击左上角⚙️→「导出配置」，会下载<code>智管先锋配置.json</code>文件</li>
+                    <li>换电脑打开本页面→点击⚙️→「导入配置」，上传刚才的json文件，所有自定义内容（卡片、关联文件、AI知识库）会100%恢复</li>
+                </ul>
+                <p><strong>2. 关联内容填写规则</strong></p>
+                <ul>
+                    <li>本地文件：需和<code>智管先锋主体系统.html</code>放在同一文件夹，填文件名即可，如<code>智能配送路线优化系统.html</code></li>
+                    <li>网页链接：填完整URL，如<code>https://example.com/课件.pdf</code></li>
+                </ul>
+                <p><strong>3. 点击卡片无反应解决方案</strong></p>
+                <ul>
+                    <li>方案1：允许浏览器弹窗（地址栏左侧弹窗图标点击「允许」）</li>
+                    <li>方案2（推荐）：开启本地服务器，运行<code>python -m http.server 8000</code>后访问<code>http://localhost:8000</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-content">
+            <span class="settings-close-btn" onclick="closeSettingsPanel()">&times;</span>
+            <h3 class="settings-title"><i class="fas fa-cog"></i> 配置管理</h3>
+            <div class="settings-btns">
+                <div class="settings-btn-item export" onclick="exportConfig()">
+                    <i class="fas fa-download"></i> 导出配置（跨设备保存）
+                </div>
+                <div class="settings-btn-item import" onclick="document.getElementById('importConfigInput').click()">
+                    <i class="fas fa-upload"></i> 导入配置（恢复自定义内容）
+                </div>
+                <div class="settings-btn-item.reset" onclick="resetDefaultConfirm()">
+                    <i class="fas fa-undo"></i> 恢复默认配置（重置所有修改）
+                </div>
+            </div>
+            <p class="settings-tips">
+                💡 提示：导出配置后请妥善保存json文件，运行导入即可快速恢复所有自定义内容，避免因环境变化导致配置丢失。
+            </p>
+            <input type="file" id="importConfigInput" accept=".json" onchange="importConfig(this)">
+        </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="edit-modal">
+        <div class="edit-modal-content">
+            <span class="edit-close-btn" onclick="closeEditModal()">&times;</span>
+            <h3 class="edit-modal-title" id="editModalTitle">编辑卡片</h3>
+            <div class="form-group">
+                <label>卡片标题</label>
+                <input type="text" id="editTitle" placeholder="例如：智能配送路线优化系统">
+            </div>
+            <div class="form-group">
+                <label>卡片描述</label>
+                <textarea id="editDesc" placeholder="例如：集成节约里程法、遗传算法等6种模型，支持地图可视化"></textarea>
+            </div>
+            <div class="form-group">
+                <label>关联类型</label>
+                <select id="editLinkType">
+                    <option value="local">本地文件（视频/PDF/HTML/课件等）</option>
+                    <option value="web">网页链接（https开头的URL）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>关联内容</label>
+                <input type="text" id="editLink" placeholder="例如：智能配送路线优化系统.html 或 https://example.com/课件.pdf">
+                <p class="form-tips">本地文件请填写相对路径，网页链接请填写完整https URL</p>
+            </div>
+            <div class="edit-modal-btns">
+                <button class="edit-modal-btn danger" id="deleteBtn" onclick="deleteCard()">删除卡片</button>
+                <button class="edit-modal-btn secondary" onclick="closeEditModal()">取消</button>
+                <button class="edit-modal-btn primary" onclick="saveCard()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 默认配置（首次加载使用，后续读取localStorage）
+        // ==========================================
+        const DEFAULT_CONFIG = {
+            tools: [
+                {
+                    id: 'tool1',
+                    icon: 'fas fa-truck',
+                    title: '智能配送路线优化',
+                    desc: '集成节约里程法、遗传算法等6种模型，支持地图可视化与多约束优化',
+                    linkType: 'local',
+                    link: '智能配送路线优化系统.html'
+                },
+                {
+                    id: 'tool2',
+                    icon: 'fas fa-chart-line',
+                    title: '智能需求预测分析',
+                    desc: '涵盖移动平均、指数平滑、ARIMA等8种预测模型，自动计算MAPE准确率',
+                    linkType: 'local',
+                    link: '智能需求预测分析系统.html'
+                },
+                {
+                    id: 'tool3',
+                    icon: 'fas fa-users',
+                    title: '课堂随机选人系统',
+                    desc: '支持多课程管理、实时打分与Excel考勤导出，适配过程化考核',
+                    linkType: 'local',
+                    link: '课堂随机选人系统.html'
+                },
+                {
+                    id: 'tool4',
+                    icon: 'fas fa-map-marker-alt',
+                    title: '智能选址分析系统',
+                    desc: '运用重心法、交叉中值法等4种经典模型，支持加权运输成本计算',
+                    linkType: 'local',
+                    link: '基于输入数据的选址模型实现--智能选址分析系统.html'
+                },
+                {
+                    id: 'tool5',
+                    icon: 'fas fa-hotel',
+                    title: '酒店管理信息系统',
+                    desc: '模拟入住/退房全流程，集成动态定价引擎与经营仪表板分析',
+                    linkType: 'local',
+                    link: '酒店管理信息系统.html'
+                },
+                {
+                    id: 'tool6',
+                    icon: 'fas fa-road',
+                    title: '节约里程法专项实训',
+                    desc: '专注算法原理演示，可视化展示节约值计算与路线合并全过程',
+                    linkType: 'local',
+                    link: '节约里程法配送路线优化系统.html'
+                }
+            ],
+            resources: [
+                {
+                    id: 'res1',
+                    icon: 'fas fa-video',
+                    title: '校企合作专家讲堂',
+                    desc: '来自校企合作企业的运营管理实战案例解析',
+                    linkType: 'local',
+                    link: '10-供应链库存协同.mp4'
+                },
+                {
+                    id: 'res2',
+                    icon: 'fas fa-book-open',
+                    title: '运营管理课件',
+                    desc: '配套《运营管理》课程的讲义、大纲、习题与实训指导',
+                    linkType: 'local',
+                    link: '10-供应链库存协同.pdf'
+                },
+                {
+                    id: 'res3',
+                    icon: 'fas fa-newspaper',
+                    title: '虚拟仿真实验',
+                    desc: '国家级一流课程：生鲜肉行业可持续冷链运营虚拟仿真实验',
+                    linkType: 'web',
+                    link: 'https://www.ilab-x.com/details/page?id=7202&isView=true'
+                }
+            ],
+            // ==========================================
+            // 超全AI知识库（覆盖工商/运营/物流/大数据全领域）
+            // ==========================================
+            knowledgeBase: {
+                // --------------------------
+                // 1. 跨场景复杂实训问题
+                // --------------------------
+                'chain_store_training': {
+                    keywords: ['连锁便利店', '选址配送', '实训步骤', '怎么做'],
+                    regex: [/连锁便利店.*?(实训|步骤|流程|怎么做)/i, /选址.*?配送.*?(实训|步骤)/i],
+                    response: `🎯 <strong>连锁便利店“选址+配送”全链路实训步骤解析：</strong><br><br>
+                    这是一个典型的供应链网络设计与优化综合实训，建议按照“战略层→战术层→执行层”的顺序分步开展：<br><br>
+                    1️⃣ <strong>战略层：门店选址规划（定位置）</strong><br>
+                    • <strong>操作工具</strong>：点击右侧「智能选址分析系统」<br>
+                    • <strong>实训任务</strong>：输入商圈坐标、预估客流量（需求量）及租金成本（费率），分别使用“精确重心法”和“交叉中值法”计算最优门店位置<br>
+                    • <strong>理论验证</strong>：对比两种方法的结果差异，分析“成本最低”与“服务公平性”在不同商业场景下的决策优先级<br><br>
+                    2️⃣ <strong>战术层：商品需求预测（定销量）</strong><br>
+                    • <strong>操作工具</strong>：点击右侧「智能需求预测分析系统」<br>
+                    • <strong>实训任务</strong>：导入各门店的历史销售数据（如饮料、零食的周销量），设置平滑系数α，运行Holt-Winters算法<br>
+                    • <strong>数据分析</strong>：观察拟合曲线与实际销量的误差（MAPE），确定各门店的安全库存与订货阈值<br><br>
+                    3️⃣ <strong>执行层：配送路径优化（降成本）</strong><br>
+                    • <strong>操作工具</strong>：点击右侧「智能配送路线优化系统」或「节约里程法专项实训」<br>
+                    • <strong>实训任务</strong>：以仓库为起点，以上一步预测的门店销量为“需求量”，设置车辆载重限制，生成最短配送路径<br>
+                    • <strong>对比分析</strong>：对比“节约里程法”生成的启发式路径与“遗传算法”生成的全局最优路径，计算节约的里程百分比<br><br>
+                    💡 <strong>教学提示</strong>：完成上述三步后，可结合「课堂随机选人系统」随机抽取小组代表，汇报整体方案的ROI（投资回报率）测算结果。如需了解某个具体算法的数学推导，可继续提问哦~`
+                },
+
+                // --------------------------
+                // 2. 工商管理核心名词解释
+                // --------------------------
+                'business_admin_basics': {
+                    keywords: ['工商管理', '企业管理', '战略管理', 'SWOT', '波特五力', '价值链', '4P', '4C', 'STP', 'ERP', 'CRM', 'SCM', '企业战略', '核心竞争力'],
+                    regex: [/SWOT|波特五力|价值链|4P|4C|STP|ERP|CRM|SCM|工商管理|战略管理/i],
+                    response: `📊 <strong>工商管理核心名词解释：</strong><br><br>
+                    <strong>1. 战略管理工具</strong><br>
+                    • <strong>SWOT分析</strong>：优势（Strengths）、劣势（Weaknesses）、机会（Opportunities）、威胁（Threats），用于内外部环境匹配，制定SO（增长型）、WO（扭转型）、ST（多元化）、WT（防御型）战略<br>
+                    • <strong>波特五力模型</strong>：供应商议价能力、购买者议价能力、潜在竞争者进入能力、替代品替代能力、行业内竞争者竞争能力，分析行业竞争结构与盈利潜力<br>
+                    • <strong>价值链分析</strong>：将企业活动分为基本活动（进料后勤、生产、发货后勤、营销、服务）和支持活动（采购、技术开发、人力资源、基础设施），识别价值创造环节<br><br>
+                    <strong>2. 营销管理理论</strong><br>
+                    • <strong>4P理论</strong>：产品（Product）、价格（Price）、渠道（Place）、促销（Promotion），从企业视角出发的传统营销框架<br>
+                    • <strong>4C理论</strong>：顾客需求（Customer Needs）、成本（Cost）、便利（Convenience）、沟通（Communication），从客户视角出发的现代营销框架<br>
+                    • <strong>STP理论</strong>：市场细分（Segmenting）、目标市场选择（Targeting）、市场定位（Positioning），是营销战略的核心流程<br><br>
+                    <strong>3. 企业管理系统</strong><br>
+                    • <strong>ERP（企业资源计划）</strong>：整合企业内部所有资源（人、财、物、产、供、销）的管理系统，实现数据共享与流程协同<br>
+                    • <strong>CRM（客户关系管理）</strong>：通过客户数据管理、销售自动化、客户服务支持，提升客户满意度与忠诚度<br>
+                    • <strong>SCM（供应链管理）</strong>：对从供应商到最终用户的物流、信息流、资金流的一体化管理，核心目标是降本增效<br><br>
+                    🎓 <strong>教学提示</strong>：可结合一汽数字化转型案例，分析ERP/SCM系统在企业管理中的实际应用价值。`
+                },
+
+                // --------------------------
+                // 3. 运营管理核心名词与计算
+                // --------------------------
+                'operations_management_core': {
+                    keywords: ['运营管理', '运营战略', '流程设计', '库存管理', 'EOQ', '经济订货批量', '安全库存', 'ABC分类', '报童模型', '质量管理', '六西格玛', 'PDCA', 'QC七大手法', '项目管理', 'CPM', 'PERT', 'WBS', '甘特图', '精益生产', '5S', '看板', 'JIT', '七大浪费', '供应链', '牛鞭效应', 'VMI', 'JIT采购'],
+                    regex: [/EOQ|经济订货批量|安全库存|ABC分类|报童模型|六西格玛|PDCA|QC七大手法|CPM|PERT|WBS|甘特图|5S|看板|JIT|七大浪费|牛鞭效应|VMI/i],
+                    response: `🏭 <strong>运营管理核心名词与计算解析：</strong><br><br>
+                    <strong>1. 库存管理模块</strong><br>
+                    • <strong>EOQ模型（经济订货批量）</strong>：假设需求稳定、提前期固定，公式：$EOQ=\sqrt{\frac{2DS}{H}}$，其中D=年需求量，S=单次订货成本，H=单位年持有成本。适用场景：需求平稳、无短缺成本的独立需求库存<br>
+                    • <strong>安全库存（SS）</strong>：应对需求波动与提前期不确定，公式：$SS=Z\times\sigma\times\sqrt{L}$，Z=服务水平系数（95%对应1.65，99%对应2.33），σ=需求标准差，L=提前期。适用场景：需求波动大的易腐品/畅销品<br>
+                    • <strong>ABC分类法</strong>：A类（占价值70-80%，数量10-20%）重点管控，C类（占价值5-10%，数量50-60%）简化管控。适用场景：多SKU库存管理<br>
+                    • <strong>报童模型</strong>：权衡缺货损失与过剩损失，最优订货量满足$P(D\leq Q^*)=\frac{C_u}{C_u+C_o}$，其中$C_u$=单位缺货成本，$C_o$=单位过剩成本。适用场景：报纸、生鲜等易逝品库存<br><br>
+                    <strong>2. 质量管理模块</strong><br>
+                    • <strong>六西格玛</strong>：以数据为基础，追求3.4ppm缺陷率，核心工具DMAIC（定义-测量-分析-改进-控制）。适用场景：流程优化、质量提升<br>
+                    • <strong>PDCA循环</strong>：计划（Plan）-执行（Do）-检查（Check）-处理（Act），持续改进的质量管理方法。适用场景：所有管理流程<br>
+                    • <strong>QC七大手法</strong>：因果图（鱼骨图）、排列图（帕累托图）、直方图、控制图、散布图、分层法、检查表。适用场景：质量问题分析与解决<br><br>
+                    <strong>3. 项目管理模块</strong><br>
+                    • <strong>CPM（关键路径法）</strong>：找出最长路径，决定项目最短工期，关键路径上的活动延误会直接导致项目延期。适用场景：确定性高的项目<br>
+                    • <strong>PERT（计划评审技术）</strong>：适用于不确定性高的项目，用三点估算法（乐观$a$/最可能$m$/悲观$b$）计算期望工期：$TE=\frac{a+4m+b}{6}$。适用场景：研发类项目<br>
+                    • <strong>WBS（工作分解结构）</strong>：将项目分解为可管理的工作包，是项目计划的基础。适用场景：所有项目的范围管理<br><br>
+                    <strong>4. 精益生产模块</strong><br>
+                    • <strong>JIT（准时制生产）</strong>：按需生产，零库存目标，但对供应链稳定性要求高。适用场景：汽车制造等重复性生产<br>
+                    • <strong>5S管理</strong>：整理（SEIRI）、整顿（SEITON）、清扫（SEISO）、清洁（SEIKETSU）、素养（SHITSUKE），现场管理的基础工具。适用场景：所有生产/服务现场<br>
+                    • <strong>七大浪费</strong>：过量生产、等待、运输、过度加工、库存、动作、缺陷，精益生产的核心消除对象。适用场景：流程优化<br><br>
+                    <strong>5. 供应链管理模块</strong><br>
+                    • <strong>牛鞭效应</strong>：需求信息沿供应链向上传递时被逐级放大，可通过共享POS数据、VMI、联合预测缓解。适用场景：多级供应链<br>
+                    • <strong>VMI（供应商管理库存）</strong>：供应商根据下游客户的销售数据自主补货，降低整体库存成本。适用场景：零售商-供应商协同<br><br>
+                    🎓 <strong>教学提示</strong>：可结合「智能需求预测分析系统」实训安全库存计算，结合「智能选址分析系统」实训供应链网络设计。`
+                },
+
+                // --------------------------
+                // 4. 物流管理核心名词与计算
+                // --------------------------
+                'logistics_management_core': {
+                    keywords: ['物流管理', '运输管理', '公路运输', '铁路运输', '水路运输', '航空运输', '管道运输', '仓储管理', 'ABC分类', '先进先出', '拣货策略', '配送管理', 'VRP', 'TSP', '节约里程法', '遗传算法', '逆向物流', '冷链物流', '物流成本'],
+                    regex: [/VRP|TSP|节约里程法|遗传算法|ABC分类|先进先出|拣货策略|冷链物流|物流成本/i],
+                    response: `🚚 <strong>物流管理核心名词与计算解析：</strong><br><br>
+                    <strong>1. 运输管理模块</strong><br>
+                    • <strong>5种运输方式对比</strong>：<br>  ①公路运输：灵活性强，适合短途、小批量货物，成本中等<br>  ②铁路运输：运量大、成本低，适合长途、大宗货物，灵活性差<br>  ③水路运输：运量最大、成本最低，适合长途、超大宗货物，速度慢<br>  ④航空运输：速度最快，适合高价值、紧急货物，成本最高<br>  ⑤管道运输：适合液体、气体，连续性强，成本高<br>
+                    • <strong>运输合理化</strong>：核心目标是降低运输成本、提高运输效率，方法包括：减少运输次数、提高装载率、优化运输路线、选择合理运输方式<br><br>
+                    <strong>2. 仓储管理模块</strong><br>
+                    • <strong>ABC分类法</strong>：同运营管理模块，物流仓储中重点管控A类货物（高价值、低数量）<br>
+                    • <strong>先进先出（FIFO）</strong>：先入库的货物先出库，防止库存过期，适用于食品、药品等保质期敏感商品<br>
+                    • <strong>拣货策略</strong>：①摘果式：按订单拣货，适合小批量多品种；②播种式：汇总订单批量拣货再分货，适合大批量少品种<br><br>
+                    <strong>3. 配送管理模块</strong><br>
+                    • <strong>VRP（车辆路径问题）</strong>：核心是在满足车辆容量、行驶时间、客户需求等约束下，寻找总行驶距离最短的路径集合。是配送优化的核心问题<br>
+                    • <strong>TSP（旅行商问题）</strong>：VRP的简化版，寻找访问所有城市一次并返回起点的最短路径，适用于单车辆配送场景<br>
+                    • <strong>节约里程法</strong>：启发式算法，核心公式：$S(i,j)=D(0,i)+D(0,j)-D(i,j)$，其中$S(i,j)$为合并客户$i$和$j$的节约值，$D$为距离。按节约值从大到小合并路线，适用于中小规模配送问题<br>
+                    • <strong>遗传算法</strong>：启发式全局优化算法，通过选择、交叉、变异操作寻找最优解，适用于大规模复杂VRP问题，精度高于节约里程法但计算时间长<br><br>
+                    <strong>4. 特殊物流模块</strong><br>
+                    • <strong>逆向物流</strong>：产品从消费端返回供应端的过程，包括退货、维修、回收、废弃物处理，核心价值是经济价值（回收再利用）、环境价值（减少排放）、品牌价值（提升满意度）<br>
+                    • <strong>冷链物流</strong>：需要全程温控的物流活动，适用于生鲜食品、药品、化工品，核心要求是温度达标、时效可控、信息可追溯<br>
+                    • <strong>物流成本构成</strong>：运输成本（占比最高，约50-60%）、仓储成本（约20-30%）、管理成本（约10-20%），降本重点是优化运输路线、提高仓储效率<br><br>
+                    🎓 <strong>教学提示</strong>：可结合「智能配送路线优化系统」实训VRP/节约里程法求解，结合TX水泥案例理解物流成本构成。`
+                },
+
+                // --------------------------
+                // 5. 大数据管理与应用核心名词与算法
+                // --------------------------
+                'big_data_analytics_core': {
+                    keywords: ['大数据', '数据挖掘', '机器学习', '预测模型', 'ARIMA', 'Holt-Winters', '随机森林', '可视化', 'ECharts', 'Tableau', '数据清洗', '特征工程', 'MapReduce', 'Hadoop', '平滑系数', 'MAPE', 'RMSE', 'MAE'],
+                    regex: [/ARIMA|Holt-Winters|随机森林|ECharts|Tableau|数据清洗|特征工程|MapReduce|Hadoop|平滑系数|MAPE|RMSE|MAE/i],
+                    response: `📊 <strong>大数据管理与应用核心名词与算法解析：</strong><br><br>
+                    <strong>1. 数据处理流程</strong><br>
+                    • <strong>数据清洗</strong>：处理缺失值（删除/填充均值/填充中位数）、异常值（3σ原则/IQR法）、重复值，是数据分析的前提<br>
+                    • <strong>特征工程</strong>：特征选择（过滤法/包裹法/嵌入法）、特征变换（归一化/标准化/独热编码），提升模型性能的关键步骤<br><br>
+                    <strong>2. 预测模型算法</strong><br>
+                    • <strong>移动平均法</strong>：简单移动平均（SMA）、加权移动平均（WMA），适用于无趋势、无季节性的平稳数据<br>
+                    • <strong>指数平滑法</strong>：<br>  ①一次指数平滑：适用于平稳数据，公式：$\hat{y}_{t+1}=\alpha y_t+(1-\alpha)\hat{y}_t$，$\alpha$为平滑系数（0-1），越大越重视近期数据<br>  ②二次指数平滑（Holt法）：适用于有线性趋势的数据，引入趋势平滑系数$\beta$<br>  ③三次指数平滑（Holt-Winters法）：适用于有趋势+季节性的数据，引入季节平滑系数$\gamma$，是需求预测工具的核心算法<br>
+                    • <strong>ARIMA模型</strong>：自回归积分移动平均模型，适用于非平稳数据，参数$(p,d,q)$：$p$=自回归阶数，$d$=差分阶数，$q$=移动平均阶数，需通过ACF/PACF图确定<br>
+                    • <strong>随机森林</strong>：集成学习算法，通过多棵决策树的投票/平均得到结果，抗过拟合能力强，适用于分类/回归问题<br><br>
+                    <strong>3. 模型评价指标</strong><br>
+                    • <strong>MAPE（平均绝对百分比误差）</strong>：$MAPE=\frac{100\%}{n}\sum_{t=1}^n\left|\frac{y_t-\hat{y}_t}{y_t}\right|$，越小越好，<10%为优秀，10%-20%为良好，>20%需调整模型<br>
+                    • <strong>RMSE（均方根误差）</strong>：$RMSE=\sqrt{\frac{1}{n}\sum_{t=1}^n(y_t-\hat{y}_t)^2}$，反映预测值与真实值的标准差，越小越好<br>
+                    • <strong>MAE（平均绝对误差）</strong>：$MAE=\frac{1}{n}\sum_{t=1}^n|y_t-\hat{y}_t|$，反映预测误差的平均水平，越小越好<br><br>
+                    <strong>4. 大数据技术框架</strong><br>
+                    • <strong>Hadoop</strong>：分布式存储（HDFS）与分布式计算（MapReduce）框架，适用于海量数据的批处理<br>
+                    • <strong>Spark</strong>：基于内存的分布式计算框架，速度比Hadoop快10-100倍，适用于实时数据处理<br>
+                    • <strong>ECharts/Tableau</strong>：数据可视化工具，ECharts是开源JavaScript库，支持交互式图表；Tableau是商用BI工具，操作简单，可视化效果好<br><br>
+                    🎓 <strong>教学提示</strong>：可结合「智能需求预测分析系统」实训不同预测模型的参数调优，理解$\alpha/\beta/\gamma$对预测结果的影响。`
+                },
+
+                // --------------------------
+                // 6. 6大实训工具涉及的算法/计算知识（逐个工具拆解）
+                // --------------------------
+                'tool_algorithms_deepdive': {
+                    keywords: ['重心法', '交叉中值法', '最小和模型', '最小最大模型', '节约值公式', '遗传算法选择', '遗传算法交叉', '遗传算法变异', 'Holt-Winters公式', 'RevPAR', 'ADR', '洗牌算法', '迭代公式'],
+                    regex: [/重心法|交叉中值法|最小和模型|最小最大模型|节约值公式|遗传算法|Holt-Winters|RevPAR|ADR|洗牌算法|迭代公式/i],
+                    response: `🔧 <strong>6大实训工具核心算法/计算知识拆解：</strong><br><br>
+                    <strong>1. 智能选址分析系统算法</strong><br>
+                    • <strong>精确重心法迭代公式</strong>：$X_{k+1}=\frac{\sum_{i=1}^n \frac{w_i x_i}{d_i}}{\sum_{i=1}^n \frac{w_i}{d_i}}$，$Y_{k+1}=\frac{\sum_{i=1}^n \frac{w_i y_i}{d_i}}{\sum_{i=1}^n \frac{w_i}{d_i}}$，其中$w_i$=需求量×费率，$d_i$=设施到节点$i$的距离，$k$为迭代次数。迭代直到$|X_{k+1}-X_k|<\epsilon$且$|Y_{k+1}-Y_k|<\epsilon$（$\epsilon$为收敛阈值，默认0.001）<br>
+                    • <strong>交叉中值法公式</strong>：基于曼哈顿距离$d=|x_1-x_2|+|y_1-y_2|$，选址点$X$坐标为需求点$X$坐标的中位数，$Y$坐标为需求点$Y$坐标的中位数，满足总加权距离最小<br>
+                    • <strong>最小和模型</strong>：最小化$\sum w_i d_i$，适用于追求整体效率的场景（如零售门店选址）<br>
+                    • <strong>最小最大模型</strong>：最小化$\max(d_i)$，适用于强调服务公平性的场景（如急救中心选址）<br><br>
+                    <strong>2. 智能配送路线优化系统算法</strong><br>
+                    • <strong>节约里程法节约值公式</strong>：$S(i,j)=D(0,i)+D(0,j)-D(i,j)$，$D$为两点间距离，节约值越大，合并路线的收益越高<br>
+                    • <strong>遗传算法核心操作</strong>：<br>  ①选择：轮盘赌选择/锦标赛选择，保留适应度高的个体<br>  ②交叉：单点交叉/多点交叉/均匀交叉，交换父代基因产生子代<br>  ③变异：位变异/交换变异，增加种群多样性，避免局部最优<br>
+                    • <strong>约束条件</strong>：车辆容量约束（$\sum q_i \leq Q$，$q_i$为客户$i$的需求量，$Q$为车辆容量）、最大行驶距离约束（$\sum d_i \leq L$，$L$为最大行驶距离）<br><br>
+                    <strong>3. 智能需求预测分析系统算法</strong><br>
+                    • <strong>Holt-Winters三次指数平滑公式</strong>：<br>  水平方程：$\ell_t=\alpha(y_t-s_{t-m})+(1-\alpha)(\ell_{t-1}+b_{t-1})$<br>  趋势方程：$b_t=\beta(\ell_t-\ell_{t-1})+(1-\beta)b_{t-1}$<br>  季节方程：$s_t=\gamma(y_t-\ell_t)+(1-\gamma)s_{t-m}$<br>  预测方程：$\hat{y}_{t+h}=\ell_t+hb_t+s_{t-m+h^+}$，其中$m$为季节周期，$h$为预测步长<br>
+                    • <strong>误差指标计算</strong>：MAPE/RMSE/MAE公式见大数据模块<br><br>
+                    <strong>4. 酒店管理信息系统算法</strong><br>
+                    • <strong>RevPAR（每间可供出租客房收入）</strong>：$RevPAR=\frac{客房总收入}{可供出租客房总数}=ADR\times 入住率$，$ADR$=平均房价=$\frac{客房总收入}{已出租客房总数}$，是衡量酒店经营效益的核心KPI<br>
+                    • <strong>动态定价公式</strong>：$P=P_0\times F_s\times F_w\times F_a\times F_m$，其中$P_0$为基础价格，$F_s$为季节因子（旺季1.3，淡季0.9），$F_w$为周末因子（周五/周六1.15），$F_a$为提前预订因子（提前14天0.9，提前7天0.95），$F_m$为会员折扣因子（银卡0.95，金卡0.9，黑金卡0.85）<br><br>
+                    <strong>5. 课堂随机选人系统算法</strong><br>
+                    • <strong>Fisher-Yates洗牌算法</strong>：将名单数组随机打乱，实现公平选人，步骤：从数组末尾开始，与前$n$个元素中的随机一个交换，直到数组开头，时间复杂度$O(n)$，无偏且高效<br><br>
+                    🎓 <strong>教学提示</strong>：可结合各工具的实训任务，让学生手动计算1-2步迭代过程，加深对算法原理的理解。`
+                },
+
+                // --------------------------
+                // 7. 3大资源库延伸知识
+                // --------------------------
+                'resource_extended_knowledge': {
+                    keywords: ['供应链库存协同', 'VMI', '联合库存管理', 'CPFR', 'TX水泥', '一汽数字化', '冷链运营', '虚拟仿真', '生鲜物流'],
+                    regex: [/供应链库存协同|VMI|联合库存管理|CPFR|TX水泥|一汽数字化|冷链运营|虚拟仿真|生鲜物流/i],
+                    response: `📚 <strong>3大资源库延伸知识解析：</strong><br><br>
+                    <strong>1. 企业专家讲堂（TX水泥/一汽案例）</strong><br>
+                    • <strong>TX水泥物流优化案例</strong>：痛点：客户分散、运输半径大（>200km成本激增）、车辆空载率30%、交付不及时。解决方案：①节约里程法优化配送路线，合并相邻客户订单；②建立区域配送中心（RDC），缩短运输半径；③引入TMS系统，实时监控车辆位置。成效：运输成本降低18%，空载率降至12%，交付及时率提升至98%<br>
+                    • <strong>一汽数字化转型案例</strong>：核心举措：①生产端：引入APS（高级计划排程系统），实现多工厂协同生产，效率提升23%；②供应链端：打通上下游数据，实现需求驱动的柔性供应，库存周转率提升35%；③服务端：建立客户数据中台，实现个性化营销，满意度提升18%。经验：数字化转型是业务流程重构+组织架构调整+文化变革的系统工程<br><br>
+                    <strong>2. 运营管理课件（供应链库存协同）</strong><br>
+                    • <strong>供应链库存协同模式</strong>：①VMI（供应商管理库存）：供应商自主补货，降低牛鞭效应；②联合库存管理（JMI）：供需双方共同管理库存，风险共担；③CPFR（协同规划、预测与补货）：全流程协同，信息共享，提升供应链响应速度<br>
+                    • <strong>库存协同价值</strong>：降低整体库存成本15-30%，提升订单满足率10-20%，缩短提前期20-40%<br><br>
+                    <strong>3. 虚拟仿真实验（生鲜冷链运营）</strong><br>
+                    • <strong>冷链运营核心要求</strong>：①温度控制：冷冻品-18℃以下，冷藏品0-4℃，恒温品10-15℃；②时效控制：生鲜品从产地到消费者手中不超过48小时；③信息追溯：全程记录温度、位置、时间，实现问题可追溯<br>
+                    • <strong>冷链成本构成</strong>：制冷成本（占比30-40%）、运输成本（占比40-50%）、损耗成本（占比10-20%），降低损耗是降本重点<br>
+                    • <strong>虚拟仿真价值</strong>：无需真实设备即可模拟冷链全流程，降低实训成本，提升学生对温控、时效、追溯的理解<br><br>
+                    🎓 <strong>教学提示</strong>：可结合资源内容开展案例研讨，让学生分析企业实践的痛点与解决方案，提升实践能力。`
+                },
+
+                // --------------------------
+                // 8. 易混淆知识点辨析
+                // --------------------------
+                'confusing_concepts': {
+                    keywords: ['重心法和交叉中值法的区别', '移动平均和指数平滑的区别', 'EOQ和报童模型的区别', 'JIT和精益生产的区别', 'VRP和TSP的区别'],
+                    regex: [/重心法.*?交叉中值法|移动平均.*?指数平滑|EOQ.*?报童模型|JIT.*?精益生产|VRP.*?TSP/i],
+                    response: `🔍 <strong>易混淆知识点辨析：</strong><br><br>
+                    <strong>1. 重心法 vs 交叉中值法</strong><br>
+                    • <strong>适用场景</strong>：重心法适用于连续空间选址（如工厂、仓库），交叉中值法适用于离散网格空间选址（如城市零售门店）<br>
+                    • <strong>距离度量</strong>：重心法用欧氏距离（直线距离），交叉中值法用曼哈顿距离（街区距离）<br>
+                    • <strong>计算方法</strong>：重心法需迭代计算，交叉中值法直接计算中位数<br><br>
+                    <strong>2. 移动平均法 vs 指数平滑法</strong><br>
+                    • <strong>权重分配</strong>：移动平均法对所有历史数据赋予相同权重（或固定权重），指数平滑法对近期数据赋予更高权重（平滑系数α控制）<br>
+                    • <strong>适用场景</strong>：移动平均法适用于无趋势、无季节性的平稳数据，指数平滑法适用于有趋势/季节性的数据<br>
+                    • <strong>滞后性</strong>：移动平均法滞后性更强，指数平滑法对变化更敏感<br><br>
+                    <strong>3. EOQ模型 vs 报童模型</strong><br>
+                    • <strong>适用产品</strong>：EOQ适用于非易逝品（可长期存储），报童模型适用于易逝品（如报纸、生鲜）<br>
+                    • <strong>决策目标</strong>：EOQ最小化年总库存成本，报童模型权衡缺货损失与过剩损失<br>
+                    • <strong>需求假设</strong>：EOQ假设需求稳定已知，报童模型假设需求随机不确定<br><br>
+                    <strong>4. JIT vs 精益生产</strong><br>
+                    • <strong>关系</strong>：JIT是精益生产的核心组成部分，精益生产是包含JIT、5S、看板、七大浪费等的完整管理体系<br>
+                    • <strong>目标</strong>：JIT目标是零库存、按需生产，精益生产目标是消除一切浪费、提升整体效率<br><br>
+                    <strong>5. VRP vs TSP</strong><br>
+                    • <strong>复杂度</strong>：TSP是VRP的简化版，VRP需考虑多车辆、容量约束、时间窗等，复杂度远高于TSP<br>
+                    • <strong>适用场景</strong>：TSP适用于单车辆访问所有点，VRP适用于多车辆协同配送<br><br>
+                    💡 <strong>记忆技巧</strong>：结合工具实训理解差异，比如用重心法选址时用欧氏距离，用交叉中值法选址时用曼哈顿距离，实践中自然区分。`
+                },
+
+                // --------------------------
+                // 9. 考试/实训高频考点
+                // --------------------------
+                'exam_key_points': {
+                    keywords: ['考试重点', '实训考点', 'EOQ假设', '牛鞭效应成因', '六西格玛等级', 'PDCA步骤', '5S内容', '七大浪费内容', 'QC七大手法内容', '项目管理铁三角'],
+                    regex: [/考试重点|实训考点|EOQ假设|牛鞭效应成因|六西格玛等级|PDCA步骤|5S内容|七大浪费内容|QC七大手法内容|项目管理铁三角/i],
+                    response: `📝 <strong>考试/实训高频考点汇总：</strong><br><br>
+                    <strong>1. 运营管理高频考点</strong><br>
+                    • <strong>EOQ模型假设条件</strong>：①需求已知且恒定；②提前期已知且恒定；③订货成本与持有成本已知；④不允许缺货；⑤每次订货量相同且一次性送达；⑥无数量折扣<br>
+                    • <strong>牛鞭效应成因</strong>：①需求预测更新；②批量订货；③价格波动；④短缺博弈；⑤供应链层级多。缓解措施：共享POS数据、VMI、联合预测、缩短提前期<br>
+                    • <strong>六西格玛等级</strong>：1σ=69万缺陷/百万，2σ=30.8万，3σ=6.6万，4σ=6210，5σ=233，6σ=3.4（目标等级）<br>
+                    • <strong>PDCA循环步骤</strong>：计划（Plan）：分析现状、找出问题、分析原因、制定方案；执行（Do）：实施方案；检查（Check）：检查结果、对比目标；处理（Act）：标准化成功经验、遗留问题转入下一循环<br>
+                    • <strong>5S内容</strong>：整理（区分要与不要的物品，清除不要的）、整顿（物品定点定位，方便取用）、清扫（清扫现场，发现问题）、清洁（维持整理/整顿/清扫成果）、素养（养成良好习惯，遵守规章制度）<br>
+                    • <strong>七大浪费内容</strong>：过量生产（最大浪费）、等待、运输、过度加工、库存、动作、缺陷<br>
+                    • <strong>QC七大手法内容</strong>：因果图（分析问题原因）、排列图（区分关键问题）、直方图（分析数据分布）、控制图（监控过程稳定）、散布图（分析变量相关性）、分层法（按类别分层分析）、检查表（收集数据）<br>
+                    • <strong>项目管理铁三角</strong>：范围（要做哪些工作）、时间（多久完成）、成本（花多少钱），三者相互制约，需平衡管理<br><br>
+                    <strong>2. 物流管理高频考点</strong><br>
+                    • <strong>5种运输方式优缺点</strong>：见物流管理模块<br>
+                    • <strong>节约里程法步骤</strong>：①计算所有客户对的节约值；②按节约值从大到小排序；③依次合并路线，满足容量/距离约束；④直到所有客户都被纳入路线<br>
+                    • <strong>VRP问题分类</strong>：按约束分为：带容量约束VRP（CVRP）、带时间窗VRP（VRPTW）、多车场VRP（MDVRP）、带回程VRP（VRPB）<br><br>
+                    <strong>3. 大数据高频考点</strong><br>
+                    • <strong>预测模型选择依据</strong>：①数据平稳性：平稳用移动平均/一次指数平滑，非平稳用ARIMA；②趋势性：有趋势用二次指数平滑，有季节性用三次指数平滑；③数据量：小数据用统计模型，大数据用机器学习模型<br>
+                    • <strong>误差指标解读</strong>：MAPE反映相对误差，RMSE反映误差的标准差，MAE反映平均误差，三者结合评估模型性能<br><br>
+                    🎓 <strong>实训考点</strong>：各工具的核心操作步骤、参数设置、结果解读、误差分析，是实训考核的重点，需熟练掌握。`
+                },
+
+                // --------------------------
+                // 10. 工具使用指南（保留原有6个工具+3个资源的指南）
+                // --------------------------
+                'location_guide': {
+                    keywords: ['选址系统', '重心法', '交叉中值', '智能选址怎么用'],
+                    regex: [/智能选址分析系统/i, /重心法/i, /交叉中值法/i],
+                    response: `🗺️ <strong>智能选址分析系统使用指南</strong><br><br>
+                    📌 <strong>一、核心功能</strong><br>
+                    本系统集成4种经典选址模型，支持单/多设施选址决策：<br>
+                    • <strong>精确重心法</strong>：通过迭代计算，寻找使总运输成本（需求量×距离×费率）最小的连续坐标点<br>
+                    • <strong>交叉中值法</strong>：针对城市街区距离（曼哈顿距离）场景，寻找总成本最小的最优解，计算速度快<br>
+                    • <strong>最小和模型</strong>：寻找中心点，使其到所有需求点的加权距离之和最小，适用于追求整体效率的场景<br>
+                    • <strong>最小最大模型</strong>：寻找中心点，使其到最远需求点的加权距离最小，适用于急救中心等强调服务公平性的场景<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>数据录入</strong>：输入节点名称、需求量、费率、X/Y坐标，点击「📋加载示例」可快速填充测试数据<br>
+                    2. <strong>模型选择</strong>：根据场景选择对应算法，精确重心法可调整最大迭代次数与收敛阈值<br>
+                    3. <strong>结果解读</strong>：重点关注最优坐标、总运输成本、平均距离三个核心指标<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 模型对比实训：同一组数据用4种模型计算，分析适用场景<br>
+                    2. 参数敏感性分析：调整某节点的需求量/费率，观察选址坐标变化<br>
+                    3. 企业案例对接：结合连锁零售选址案例，用脱敏企业数据验证模型有效性<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「智能选址分析系统」卡片打开工具，点击「🚀开始计算选址」即可查看运行效果。`
+                },
+                'delivery_guide': {
+                    keywords: ['配送系统', '路线优化', '节约里程法', 'VRP', 'TSP'],
+                    regex: [/智能配送路线优化系统/i, /节约里程法/i, /VRP/i, /TSP/i],
+                    response: `🚚 <strong>智能配送路线优化系统使用指南</strong><br><br>
+                    📌 <strong>一、核心功能</strong><br>
+                    本系统解决车辆路径问题（VRP）及其特例旅行商问题（TSP），支持多约束路径规划：<br>
+                    • <strong>多算法支持</strong>：内置节约里程法（启发式，速度快）、遗传算法（全局最优，精度高）<br>
+                    • <strong>多约束设置</strong>：支持车辆容量、最大行驶里程、客户需求量等约束条件<br>
+                    • <strong>可视化展示</strong>：地图+Echarts双可视化，直观展示优化前后路线差异<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>参数设置</strong>：配置仓库坐标、车辆总数、单车最大容量<br>
+                    2. <strong>数据录入</strong>：输入客户坐标与需求量，点击「🎲随机生成数据」可快速创建测试场景<br>
+                    3. <strong>运行优化</strong>：选择算法后点击「▶️开始路线优化」，1-2秒生成结果<br>
+                    4. <strong>结果解读</strong>：重点关注节约里程、车辆利用率、总行驶距离三个核心指标<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 算法对比实训：同一组数据分别用节约里程法和遗传算法计算，对比优化效果与计算时间<br>
+                    2. 约束敏感性分析：调整车辆容量，观察路线数量与节约里程的变化<br>
+                    3. 企业案例对接：结合TX水泥集团物流优化案例，验证算法在实际场景中的降本效果<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「智能配送路线优化系统」卡片打开工具，点击「开始路线优化」即可查看运行效果。`
+                },
+                'forecast_guide': {
+                    keywords: ['需求预测', '预测系统', '平滑系数', 'Holt-Winters'],
+                    regex: [/智能需求预测分析系统/i, /平滑系数/i, /Holt-Winters/i],
+                    response: `📈 <strong>智能需求预测分析系统使用指南</strong><br><br>
+                    📌 <strong>一、核心功能</strong><br>
+                    本系统集成8种主流预测模型，核心亮点是Holt-Winters指数平滑算法，支持趋势+季节性数据预测：<br>
+                    • <strong>多模型覆盖</strong>：移动平均、一次/二次/三次指数平滑、ARIMA、季节性朴素法等<br>
+                    • <strong>参数调优</strong>：独立调节水平平滑系数α、趋势平滑系数β、季节平滑系数γ<br>
+                    • <strong>误差分析</strong>：自动计算MAPE、RMSE、MAE等指标，量化模型准确度<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>数据录入</strong>：输入历史周期与对应观测值，点击「📋加载示例」可快速获取啤酒/冷饮季节性数据<br>
+                    2. <strong>参数设置</strong>：根据数据特征选择模型，调整平滑系数（α越大越重视近期数据）<br>
+                    3. <strong>运行预测</strong>：点击「🔮开始预测」生成拟合曲线与未来预测值<br>
+                    4. <strong>结果解读</strong>：MAPE<10%为优秀，10%-20%为良好，>20%需调整模型或参数<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 参数敏感性实训：固定数据，调整α值，观察曲线形态与误差指标变化<br>
+                    2. 模型对比实训：同一组数据用3种不同模型预测，对比MAPE值选择最优模型<br>
+                    3. 场景匹配实训：结合零售/制造/物流场景，练习选择适配的预测模型<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「智能需求预测分析系统」卡片打开工具，点击「开始预测分析」即可查看运行效果。`
+                },
+                'cw_guide': {
+                    keywords: ['节约里程法', '专项实训', '合并规则', 'CVRP'],
+                    regex: [/节约里程法专项实训/i, /合并规则/i, /CVRP/i],
+                    response: `🔀 <strong>节约里程法（CVRP）专项实训系统指南</strong><br><br>
+                    📌 <strong>一、算法原理</strong><br>
+                    节约里程法（Clarke-Wright）是解决车辆路径问题的经典启发式算法，核心思想是合并路线产生节约：<br>
+                    • <strong>节约值公式</strong>：$S(i,j)=D(0,i)+D(0,j)-D(i,j)$，节约值越大，合并收益越高<br>
+                    • <strong>合并规则</strong>：按节约值从大到小排序，依次合并路线，需满足容量约束与连接约束<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>数据初始化</strong>：输入客户坐标与需求量，点击「生成客户点」初始化场景<br>
+                    2. <strong>逐步演示</strong>：点击「▶️执行下一步合并」，系统会高亮当前合并的客户对，更新路线结构并记录合并详情<br>
+                    3. <strong>自动运行</strong>：点击「⚡自动运行至结束」可一键观看完整合并过程<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 原理验证实训：手动点击“下一步”，验证节约值计算公式，理解每一步合并对总里程的贡献<br>
+                    2. 约束条件测试：设置极小车辆容量，观察算法何时停止合并，理解容量约束的作用<br>
+                    3. 算法对比实训：与本系统自动计算结果对比，分析启发式算法的优劣<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「节约里程法专项实训」卡片打开工具，点击「生成客户点」后开始体验。`
+                },
+                'hotel_guide': {
+                    keywords: ['酒店系统', '动态定价', 'RevPAR', '房态管理'],
+                    regex: [/酒店管理信息系统/i, /动态定价/i, /RevPAR/i, /房态/i],
+                    response: `🏨 <strong>酒店管理信息系统使用指南</strong><br><br>
+                    📌 <strong>一、核心功能</strong><br>
+                    本系统模拟连锁酒店PMS核心业务，重点训练收益管理能力：<br>
+                    • <strong>动态房态管理</strong>：覆盖空闲、已预订、已入住、待清洁、维修5种房态流转<br>
+                    • <strong>动态定价引擎</strong>：根据季节、周末、提前预订天数、会员等级自动计算最优房价<br>
+                    • <strong>经营仪表板</strong>：可视化展示入住率、RevPAR、房型收入占比等核心指标<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>房态操作</strong>：点击房间号切换房态，支持锁定维修、标记打扫完成<br>
+                    2. <strong>预订入住</strong>：输入客人信息，系统自动识别会员等级并应用对应折扣<br>
+                    3. <strong>数据分析</strong>：点击「经营仪表板」查看近7天入住率曲线与收入占比饼图<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 收益管理实训：模拟节假日高峰，观察动态定价引擎如何上调房价，计算RevPAR峰值<br>
+                    2. 危机处理实训：模拟订单取消场景，练习通过限时特价盘活库存<br>
+                    3. 会员管理实训：模拟不同消费金额的客人，观察会员等级变化与积分累积<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「酒店管理信息系统」卡片打开系统，默认账号front/123456，可直接操作体验全流程。`
+                },
+                'selector_guide': {
+                    keywords: ['选人系统', '随机抽人', '防重复', '课堂互动'],
+                    regex: [/课堂随机选人系统/i, /随机抽人/i, /防重复/i],
+                    response: `🎲 <strong>课堂随机选人系统使用指南</strong><br><br>
+                    📌 <strong>一、核心功能</strong><br>
+                    专为课堂教学互动设计，解决公平选人与过程化考核需求：<br>
+                    • <strong>防重复机制</strong>：抽中的学生自动进入“已抽中”池，直到全员抽完才重置<br>
+                    • <strong>多模式切换</strong>：支持可重复/不重复两种选人模式，适配不同课堂场景<br>
+                    • <strong>数据管理</strong>：支持批量导入名单、实时打分、Excel考勤导出、配置备份恢复<br><br>
+                    📊 <strong>二、操作详解</strong><br>
+                    1. <strong>名单初始化</strong>：点击「📋加载示例名单」导入默认学生，或粘贴Excel名单批量导入<br>
+                    2. <strong>选人设置</strong>：选择选人模式，调整滚动速度（极快/正常/慢速）<br>
+                    3. <strong>运行选人</strong>：点击「🎯开始抽取」启动滚动，点击「🛑停止」锁定人选<br>
+                    4. <strong>数据导出</strong>：点击「￥导出记录Excel」生成考勤表，点击「备份页面」保存配置<br><br>
+                    🎓 <strong>三、教学实训建议</strong><br>
+                    1. 过程化考核：每次提问后即时打分，期末导出Excel自动汇总平时成绩<br>
+                    2. 公平选人：使用“不重复”模式确保所有学生均有被提问机会<br>
+                    3. 课堂互动：配合“极快”滚动速度增加悬念，提升学生注意力<br><br>
+                    👉 <strong>操作引导</strong>：点击右侧「课堂随机选人系统」卡片打开工具，直接点击「开始抽取」即可体验。`
+                },
+                'resource_guide': {
+                    keywords: ['企业专家讲堂', '运营管理课件', '虚拟仿真实验', '资源怎么用'],
+                    regex: [/企业专家讲堂|运营管理课件|虚拟仿真实验|资源怎么用/i],
+                    response: `📚 <strong>产教融合资源库使用指南</strong><br><br>
+                    📌 <strong>一、资源构成</strong><br>
+                    1. <strong>企业专家讲堂</strong>：来自TX水泥、一汽等合作企业的实战案例视频，涵盖物流优化、数字化转型、供应链协同等主题，点击卡片直接播放<br>
+                    2. <strong>运营管理课件</strong>：配套《运营管理》课程的讲义、大纲、习题与实训指导，点击卡片下载PDF文件<br>
+                    3. <strong>虚拟仿真实验</strong>：国家级一流课程“生鲜肉行业可持续冷链运营虚拟仿真实验”，点击卡片进入实验平台，模拟冷链全流程运营<br><br>
+                    📊 <strong>二、教学应用建议</strong><br>
+                    1. <strong>案例教学</strong>：在讲解物流优化、供应链管理等知识点时，播放对应企业案例视频，增强学生对理论的理解<br>
+                    2. <strong>自主学习</strong>：引导学生下载课件预习/复习，结合实训工具完成作业与课程设计<br>
+                    3. <strong>虚拟实训</strong>：安排学生完成虚拟仿真实验，提交实验报告，提升实践能力<br><br>
+                    🎓 <strong>三、资源更新</strong><br>
+                    点击右侧「+新增资源卡片」可添加自定义资源，如行业报告、公开课链接、企业数据等，丰富教学资源库。<br><br>
+                    👉 <strong>操作引导</strong>：点击对应资源卡片即可打开，如需添加新资源，点击「新增资源卡片」进行配置。`
+                },
+'assistant_intro': {
+    keywords: ['本智能助手介绍', '智管先锋介绍','功能介绍','拟解决的问题','本ai助手介绍','本助手介绍', '本智能体介绍','本智能助手是什么','运营管理AI教学智能助手介绍','你是谁', '这个AI是什么', '智能助手是什么', '工具介绍', '系统功能介绍'],
+    regex: [/本智能助手|智管先锋|系统介绍|智能助手介绍/i],
+    response: `🤖 <strong>「智管先锋」基于多模态安全交互的运营管理AI教学智能助手官方介绍</strong><br><br>
+    智管先锋”AI教学智能助手采用“规则引擎+分层专业知识库+多模态安全交互”的轻量级智能体架构，默认集成六大系统工具、三大产教资源，覆盖专业知识点，且支持自定义拓展。系统形成“问-学-练-评”闭环，全链路本地化运行、零数据外传，破解当前教学智能体“套壳云端API风险、非编程背景教师难自建、AI对话式学用脱节”痛点，零门槛可复制，便于普适性教学推广。本AI教学智能助手采用“全本地化运行、零数据外传”的安全架构。<br><br>
+    👉 <strong>核心功能分为五层：</strong><br><br>
+    ✅ <strong>（一）多模态安全交互层</strong>：左侧为AI对话区，支持自然语言提问，所有交互数据仅存于本地浏览器，断网也能用；右侧为核心系统与资源卡片区，点击即可跳转本地实训系统工具或打开产教融合资源，无云端请求风险（若有云端链接需求可也自行配置）。<br><br>
+    ✅ <strong>（二）分层专业知识库</strong>：内置众多经管类专业知识点，覆盖工商管理、运营管理、物流管理、大数据管理与应用全领域，采用“正则匹配+关键词检索”的规则引擎，回复零幻觉、可溯源；包含跨场景实训引导（如“连锁便利店选址+配送三步走”），直接关联对应工具。（若需拓展专业知识库和跨场景实训引导，可自行添加配置）。<br><br>
+    ✅ <strong>（三）系统工具矩阵</strong>：默认集成6大核心系统工具——智能配送路线优化（节约里程法/遗传算法等6大经典算法）、智能需求预测（Holt-Winters/ARIMA等8大模型）、智能选址分析（重心法/交叉中值法等4大模型）、酒店（门店）管理信息系统（前台/后台两大平台）、节约里程法专项实训（教学重点/难点专项训练）、课堂随机选人系统（随机互动/过程化考核），均支持本地运行，覆盖课程核心教学与实训场景，且支持自定义拓展和个性化编辑。<br><br>
+    ✅ <strong>（四）产教融合资源库</strong>：内置3类产教融合教学资源，无外传风险：一是校企合作专家讲堂，收录校企合作特聘专家脱敏实战案例教学视频，AI回复对应知识点时可一键跳转播放（由于gitee等平台对大视频文件限制或收费，上报的版本有影响，本地化部署不影响）；二是全体系运营管理课件，涵盖大纲、习题、实训指导等PDF资源（其它类型教学资源教师可自行添加）；三是国家级虚拟仿真实验镜像，对接生鲜冷链运营虚拟仿真平台，方便调用。资源与知识库、系统实训工具深度绑定，形成“案例导入-理论讲解-工具实操”的完整教学链条。<br><br>
+    ✅ <strong>（五）零门槛配置模块</strong>：支持知识库、工具、资源的自定义增删改，可导出/导入配置文件，换设备一键恢复所有设置，非编程教师10分钟即可完成个性化调整。<br><br>
+    👉 <strong>拟解决的问题：</strong><br><br>
+ ✅ <strong>（一）数据安全隐患</strong>：破解当前教学智能体依赖云端API调用的痛点，避免学生信息数据、企业合作敏感信息外传，完全符合教育数据安全合规要求。<br><br>
+ ✅ <strong>（二）自建门槛过高</strong>：解决非编程背景教师“想自建AI工具却不会开发”的困境，无需服务器运维、无需代码基础，拷贝文件加个性编辑即可完成本地部署，支持自主调整知识库、工具与资源。<br><br>
+ ✅ <strong>（三）学用衔接断层</strong>：纠正通用大模型“专业回答有幻觉、不与本地实训资源联动”的问题，学生提问后可跳转对应工具实操，避免“懂理论不会用工具”的情况。<br><br>
+ ✅ <strong>（四）资源分散无闭环</strong>：整合原本零散的实训工具、课件、企业案例、虚拟仿真实验，形成统一入口，解决资源孤岛问题，支撑全流程教学。<br><br>
+本AI教学智能助手以“安全、零门槛、强适配”为目标，打造适配经管类专业课的本地化AI教学智能助手，填补轻量级安全型教学智能体的空白。<br><br>
+    👉 <strong>操作引导</strong>：点击右侧卡片即可使用对应核心系统工具/资源，如需了解具体功能，可继续提问哦~`
+},
+                // --------------------------
+                // 11. 兜底回复（未匹配到问题时）
+                // --------------------------
+                'fallback': {
+                    keywords: [],
+                    regex: [],
+                    response: `🤖 <strong>AI助手未匹配到相关知识点，您可以尝试提问：</strong><br><br>
+                    📌 <strong>专业名词类</strong>：<br>
+                    • EOQ模型的假设条件是什么？<br>
+                    • 重心法和交叉中值法的区别？<br>
+                    • 牛鞭效应的成因和缓解措施？<br>
+                    • 六西格玛的等级标准是什么？<br><br>
+                    📌 <strong>算法原理类</strong>：<br>
+                    • 节约里程法的节约值公式是什么？<br>
+                    • Holt-Winters三次指数平滑的公式？<br>
+                    • 遗传算法的选择、交叉、变异操作？<br>
+                    • RevPAR和ADR的计算公式？<br><br>
+                    📌 <strong>工具使用类</strong>：<br>
+                    • 智能选址分析系统怎么用？<br>
+                    • 需求预测系统的平滑系数怎么设置？<br>
+                    • 酒店系统的动态定价规则是什么？<br>
+                    • 课堂选人系统的Excel怎么导出？<br><br>
+                    📌 <strong>实训案例类</strong>：<br>
+                    • 连锁便利店选址+配送的实训步骤？<br>
+                    • TX水泥的物流优化措施有哪些？<br>
+                    • 一汽数字化转型的经验是什么？<br>
+                    • 冷链运营的核心要求是什么？<br><br>
+                    AI只是工具，不可完全依赖！若我仍不能让您满意，可咨询尹老师，也可直接点击右侧卡片使用系统工具或查看产教融合资源~`
+                }
+            }
+        };
+
+        // ==========================================
+        // 全局变量
+        // ==========================================
+        let currentConfig = JSON.parse(localStorage.getItem('operationLabConfig')) || JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        let currentEditId = null;
+        let currentEditType = null;
+        let isAddMode = false;
+
+        // ==========================================
+        // 初始化：渲染所有卡片
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTools();
+            renderResources();
+        });
+
+        // 渲染工具卡片
+        function renderTools() {
+            const grid = document.getElementById('toolsGrid');
+            grid.innerHTML = '';
+            
+            // 保护逻辑：如果配置异常，强制从默认配置恢复
+            if (!currentConfig || !currentConfig.tools || currentConfig.tools.length === 0) {
+                console.warn("检测到配置异常，正在从默认配置恢复...");
+                currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                localStorage.setItem('operationLabConfig', JSON.stringify(currentConfig));
+            }
+
+            currentConfig.tools.forEach(tool => {
+                const card = document.createElement('div');
+                card.className = 'tool-card';
+                card.onclick = (e) => {
+                    if (e.target.closest('.card-edit-btn')) return;
+                    openLink(tool.linkType, tool.link);
+                };
+                card.innerHTML = `
+                    <div class="card-edit-btn" onclick="event.stopPropagation(); openEditModal('edit-tool', '${tool.id}')">
+                        <i class="fas fa-pencil-alt"></i>
+                    </div>
+                    <i class="${tool.icon}"></i>
+                    <h3>${tool.title}</h3>
+                    <p>${tool.desc}</p>
+                    <span class="file-tag">关联：${tool.linkType === 'local' ? '本地文件' : '网页链接'} | ${tool.link}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 渲染资源卡片
+        function renderResources() {
+            const grid = document.getElementById('resourcesGrid');
+            grid.innerHTML = '';
+            
+            // 保护逻辑：如果配置异常，强制从默认配置恢复
+            if (!currentConfig || !currentConfig.resources || currentConfig.resources.length === 0) {
+                console.warn("检测到配置异常，正在从默认配置恢复...");
+                currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+                localStorage.setItem('operationLabConfig', JSON.stringify(currentConfig));
+            }
+
+            currentConfig.resources.forEach(res => {
+                const card = document.createElement('div');
+                card.className = 'tool-card';
+                card.onclick = (e) => {
+                    if (e.target.closest('.card-edit-btn')) return;
+                    openLink(res.linkType, res.link);
+                };
+                card.innerHTML = `
+                    <div class="card-edit-btn" onclick="event.stopPropagation(); openEditModal('edit-resource', '${res.id}')">
+                        <i class="fas fa-pencil-alt"></i>
+                    </div>
+                    <i class="${res.icon}"></i>
+                    <h3>${res.title}</h3>
+                    <p>${res.desc}</p>
+                    <span class="file-tag">关联：${res.linkType === 'local' ? '本地文件' : '网页链接'} | ${res.link}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // ==========================================
+        // 设置面板相关函数
+        // ==========================================
+        function openSettingsPanel() {
+            document.getElementById('settingsPanel').style.display = 'flex';
+        }
+
+        function closeSettingsPanel() {
+            document.getElementById('settingsPanel').style.display = 'none';
+        }
+
+        // 导出配置
+        function exportConfig() {
+            const configStr = JSON.stringify(currentConfig, null, 2);
+            const blob = new Blob([configStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '智管先锋配置.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('配置导出成功！请妥善保存「智管先锋配置.json」文件，换电脑导入即可恢复所有自定义内容。');
+            closeSettingsPanel();
+        }
+
+        // 导入配置
+        function importConfig(input) {
+            const file = input.files[0];
+            if (!file) return;
+            if (!file.name.endsWith('.json')) {
+                alert('请选择json格式的配置文件！');
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedConfig = JSON.parse(e.target.result);
+                    // 校验配置格式
+                    if (!importedConfig.tools || !importedConfig.resources || !importedConfig.knowledgeBase) {
+                        throw new Error('配置文件格式不正确！');
+                    }
+                    currentConfig = importedConfig;
+                    localStorage.setItem('operationLabConfig', JSON.stringify(currentConfig));
+                    renderTools();
+                    renderResources();
+                    alert('配置导入成功！所有自定义内容已恢复。');
+                } catch (err) {
+                    alert('导入失败：' + err.message);
+                } finally {
+                    input.value = '';
+                    closeSettingsPanel();
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 恢复默认确认
+        function resetDefaultConfirm() {
+            if (confirm('确定要恢复默认配置吗？所有自定义修改（卡片名称、关联文件、AI知识库调整）将被永久覆盖！')) {
+                resetDefault();
+            }
+        }
+
+        // 恢复默认配置
+        function resetDefault() {
+            localStorage.removeItem('operationLabConfig');
+            currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+            renderTools();
+            renderResources();
+            closeSettingsPanel();
+            alert('已恢复默认配置！');
+        }
+
+        // ==========================================
+        // 编辑弹窗相关函数
+        // ==========================================
+        function openEditModal(mode, id = null) {
+            isAddMode = mode.startsWith('add');
+            currentEditType = mode.includes('tool') ? 'tool' : 'resource';
+            currentEditId = id;
+
+            const title = document.getElementById('editModalTitle');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const linkTypeSelect = document.getElementById('editLinkType');
+            const linkInput = document.getElementById('editLink');
+
+            if (isAddMode) {
+                title.textContent = currentEditType === 'tool' ? '新增工具卡片' : '新增资源卡片';
+                document.getElementById('editTitle').value = '';
+                document.getElementById('editDesc').value = '';
+                linkTypeSelect.value = 'local';
+                linkInput.value = '';
+                deleteBtn.style.display = 'none';
+            } else {
+                title.textContent = currentEditType === 'tool' ? '编辑工具卡片' : '编辑资源卡片';
+                const list = currentEditType === 'tool' ? currentConfig.tools : currentConfig.resources;
+                const item = list.find(i => i.id === id);
+                document.getElementById('editTitle').value = item.title;
+                document.getElementById('editDesc').value = item.desc;
+                linkTypeSelect.value = item.linkType;
+                linkInput.value = item.link;
+                deleteBtn.style.display = 'block';
+            }
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // 保存卡片
+        function saveCard() {
+            const title = document.getElementById('editTitle').value.trim();
+            const desc = document.getElementById('editDesc').value.trim();
+            const linkType = document.getElementById('editLinkType').value;
+            const link = document.getElementById('editLink').value.trim();
+
+            if (!title || !desc || !link) {
+                alert('请填写完整信息！');
+                return;
+            }
+            if (linkType === 'web' && !link.startsWith('http://') && !link.startsWith('https://')) {
+                if (!confirm('网页链接建议以http://或https://开头，否则可能无法正常打开，是否继续保存？')) {
+                    return;
+                }
+            }
+
+            if (isAddMode) {
+                const list = currentEditType === 'tool' ? currentConfig.tools : currentConfig.resources;
+                const newId = `${currentEditType}${list.length + 1}`;
+                const newItem = {
+                    id: newId,
+                    icon: currentEditType === 'tool' ? 'fas fa-cube' : 'fas fa-file-alt',
+                    title,
+                    desc,
+                    linkType,
+                    link
+                };
+                list.push(newItem);
+            } else {
+                const list = currentEditType === 'tool' ? currentConfig.tools : currentConfig.resources;
+                const index = list.findIndex(i => i.id === currentEditId);
+                list[index] = {
+                    ...list[index],
+                    title,
+                    desc,
+                    linkType,
+                    link
+                };
+            }
+
+            localStorage.setItem('operationLabConfig', JSON.stringify(currentConfig));
+            if (currentEditType === 'tool') {
+                renderTools();
+            } else {
+                renderResources();
+            }
+            closeEditModal();
+            alert('保存成功！');
+        }
+
+        // 删除卡片
+        function deleteCard() {
+            if (!confirm('确定要删除这张卡片吗？删除后不可恢复！')) return;
+            
+            const list = currentEditType === 'tool' ? currentConfig.tools : currentConfig.resources;
+            currentConfig[currentEditType + 's'] = list.filter(i => i.id !== currentEditId);
+            localStorage.setItem('operationLabConfig', JSON.stringify(currentConfig));
+            if (currentEditType === 'tool') {
+                renderTools();
+            } else {
+                renderResources();
+            }
+            closeEditModal();
+            alert('删除成功！');
+        }
+
+        // ==========================================
+        // 打开关联内容
+        // ==========================================
+        function openLink(linkType, link) {
+            if (!link) {
+                alert('未关联内容！请点击卡片右上角的✏️图标设置关联内容。');
+                return;
+            }
+            try {
+                if (linkType === 'web') {
+                    const newWindow = window.open(link, '_blank');
+                    if (!newWindow || newWindow.closed) {
+                        throw new Error('浏览器拦截了弹窗，请点击地址栏左侧「允许」后重试');
+                    }
+                } else {
+                    const newWindow = window.open(link, '_blank');
+                    if (!newWindow || newWindow.closed) {
+                        throw new Error(`文件打开失败，请检查：${link}是否存在于index.html同一文件夹，或是否被浏览器拦截`);
+                    }
+                }
+            } catch (e) {
+                alert(`打开失败：${e.message}\n\n参考解决方案：\n1. 允许浏览器弹窗\n2. 开启本地服务器（运行python -m http.server 8000后访问http://localhost:8000）`);
+            }
+        }
+
+        // ==========================================
+        // AI对话逻辑（支持正则+关键词匹配，复杂问题全生效）
+        // ==========================================
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const messageText = input.value.trim();
+            if (messageText === '') return;
+
+            appendMessage(messageText, 'user');
+            input.value = '';
+
+            // 模拟AI思考（500-1000ms随机延迟，更真实）
+            setTimeout(() => {
+                const aiResponse = getAIResponse(messageText);
+                appendMessage(aiResponse, 'ai');
+            }, Math.random() * 500 + 500);
+        }
+
+        function getAIResponse(input) {
+            const lowerInput = input.toLowerCase();
+            let bestMatch = null;
+            let maxScore = 0;
+
+            // 遍历知识库，优先匹配正则，再匹配关键词
+            const kb = DEFAULT_CONFIG.knowledgeBase;
+            for (const key in kb) {
+                const item = kb[key];
+                let score = 0;
+                
+                // 1. 正则匹配（核心：解决复杂问题识别）
+                if (item.regex) {
+                    for (const reg of item.regex) {
+                        if (reg.test(input)) {
+                            score += 3; // 正则匹配权重更高
+                        }
+                    }
+                }
+                
+                // 2. 关键词匹配
+                if (item.keywords) {
+                    item.keywords.forEach(keyword => {
+                        const lowerKeyword = keyword.toLowerCase();
+                        if (lowerInput.includes(lowerKeyword)) {
+                            score += lowerInput === lowerKeyword ? 2 : 1;
+                        }
+                    });
+                }
+                
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestMatch = item.response;
+                }
+            }
+
+            // 匹配到知识点，返回对应回复；否则返回兜底回复
+            return bestMatch || kb.fallback.response;
+        }
+
+        function appendMessage(text, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // ==========================================
+        // 使用指引展开/收起
+        // ==========================================
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            content.classList.toggle('active');
+        }
+
+        // 点击弹窗外部关闭弹窗
+        window.onclick = function(event) {
+            const settingsPanel = document.getElementById('settingsPanel');
+            const editModal = document.getElementById('editModal');
+            if (event.target == settingsPanel) {
+                closeSettingsPanel();
+            }
+            if (event.target == editModal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>
